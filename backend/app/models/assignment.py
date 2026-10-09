@@ -33,7 +33,7 @@ class Assignment(Base):
     published_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
-    classroom = relationship("Classroom", backref="assignments")
+    classroom = relationship("Classroom", back_populates="assignments")
     teacher = relationship("User", backref="created_assignments")
     problems = relationship("AssignmentProblem", back_populates="assignment", cascade="all, delete-orphan", order_by="AssignmentProblem.order")
     student_progress = relationship("AssignmentStudentProgress", back_populates="assignment", cascade="all, delete-orphan")

@@ -20,6 +20,7 @@ class Classroom(Base):
     # Relationships
     teacher = relationship("User", back_populates="classrooms_created")
     members = relationship("ClassroomMember", back_populates="classroom", cascade="all, delete-orphan")
+    assignments = relationship("Assignment", back_populates="classroom", cascade="all, delete-orphan")
 
 class ClassroomMember(Base):
     __tablename__ = "classroom_members"
