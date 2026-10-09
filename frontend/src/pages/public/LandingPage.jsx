@@ -1,15 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  Code2, 
-  School, 
-  Terminal, 
-  ShieldCheck, 
-  Sparkles, 
-  ArrowRight, 
-  UserCheck, 
-  GraduationCap,
-  Activity
+import {
+  Code2,
+  ShieldCheck,
+  Sparkles,
+  ArrowRight,
+  UserCheck,
+  GraduationCap
 } from 'lucide-react';
 
 export const LandingPage = () => {
@@ -77,55 +74,8 @@ export const LandingPage = () => {
         </div>
       </section>
 
-      {/* Features Grid */}
-      <section className="bg-white border-y border-slate-200 py-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">Core Educational Features</h2>
-            <p className="text-slate-500 text-sm mt-2">Built for modern computer science courses and assessment workflow</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200/80">
-              <div className="p-3 bg-indigo-100 text-indigo-600 rounded-xl w-fit mb-4">
-                <School className="w-6 h-6" />
-              </div>
-              <h3 className="font-bold text-slate-900 text-lg mb-2">Classroom Management</h3>
-              <p className="text-sm text-slate-600 leading-relaxed">
-                Teachers create classrooms and generate unique 7-character join codes (e.g. `PY10192`). Students join instantly and access assigned problems.
-              </p>
-            </div>
-
-            <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200/80">
-              <div className="p-3 bg-indigo-100 text-indigo-600 rounded-xl w-fit mb-4">
-                <Terminal className="w-6 h-6" />
-              </div>
-              <h3 className="font-bold text-slate-900 text-lg mb-2">Docker Code Execution</h3>
-              <p className="text-sm text-slate-600 leading-relaxed">
-                Submitted Python code runs inside ephemeral, isolated Docker containers with resource constraints, timeouts, and hidden test case verification.
-              </p>
-            </div>
-
-            <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200/80">
-              <div className="p-3 bg-indigo-100 text-indigo-600 rounded-xl w-fit mb-4">
-                <Activity className="w-6 h-6" />
-              </div>
-              <h3 className="font-bold text-slate-900 text-lg mb-2">Performance Tracking</h3>
-              <p className="text-sm text-slate-600 leading-relaxed">
-                Detailed submission status tracking (`ACCEPTED`, `WRONG_ANSWER`, `RUNTIME_ERROR`, `TIME_LIMIT_EXCEEDED`) with full submission history.
-              </p>
-            </div>
-          </div>
-
-          {/* AI Tutor Notice */}
-          <div className="mt-12 p-4 bg-indigo-50 border border-indigo-200 rounded-xl text-center text-xs text-indigo-800">
-            <span className="font-semibold">Upcoming Feature Notice:</span> AI coding tutor assistance and automated code review will be introduced in future platform phases.
-          </div>
-        </div>
-      </section>
-
       {/* Footer */}
-      <footer className="bg-slate-900 text-slate-400 py-8 text-center text-xs border-t border-slate-800">
+      <footer className="bg-white text-slate-500 py-8 text-center text-xs border-t border-slate-200">
         <p>© 2026 Coder. All rights reserved.</p>
       </footer>
     </div>
