@@ -33,12 +33,6 @@ export const classroomsApi = {
     return response.data;
   },
 
-  // Teacher-only: currently just { disable_paste }
-  updateClassroomSettings: async (id, settings) => {
-    const response = await apiClient.patch(`/classrooms/${id}/settings`, settings);
-    return response.data;
-  },
-
   // Teacher-only: student roster with rank/points/accuracy/progress
   getStudentRoster: async (classroomId) => {
     const response = await apiClient.get(`/classrooms/${classroomId}/students`);

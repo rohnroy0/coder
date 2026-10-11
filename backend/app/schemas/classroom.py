@@ -9,9 +9,6 @@ class ClassroomCreate(BaseModel):
 class ClassroomJoin(BaseModel):
     join_code: str = Field(..., examples=["PY10192"])
 
-class ClassroomSettingsUpdate(BaseModel):
-    disable_paste: bool
-
 class StudentOut(BaseModel):
     id: int
     name: str
@@ -27,7 +24,6 @@ class ClassroomResponse(BaseModel):
     name: str
     description: Optional[str] = None
     join_code: str
-    disable_paste: bool = False
     created_at: datetime
 
     class Config:
@@ -39,7 +35,6 @@ class ClassroomDetailResponse(BaseModel):
     name: str
     description: Optional[str] = None
     join_code: str
-    disable_paste: bool = False
     created_at: datetime
     students: List[StudentOut] = []
 

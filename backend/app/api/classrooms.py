@@ -9,7 +9,6 @@ from app.schemas.classroom import (
     ClassroomJoin,
     ClassroomResponse,
     ClassroomDetailResponse,
-    ClassroomSettingsUpdate,
     StudentOut
 )
 from app.schemas.student_profile import RosterEntry, StudentProfileResponse, SubmissionCodeResponse
@@ -127,20 +126,9 @@ def get_classroom_detail(
         name=classroom.name,
         description=classroom.description,
         join_code=classroom.join_code,
-        disable_paste=classroom.disable_paste,
         created_at=classroom.created_at,
         students=students_list
     )
-
-@router.patch("/{classroom_id}/settings", response_model=ClassroomResponse)
-def update_classroom_settings(
-    classroom_id: int,
-    schema: ClassroomSettingsUpdate,
-    db: Session = Depends(get_db),
-    current_teacher: User = Depends(get_current_teacher)
-):
-    """Teacher-only. Currently controls whether students can paste into the code editor for this classroom."""
-    return ClassroomService.update_settings(db, classroom_id, current_teacher.id, schema)
 
 @router.delete("/{classroom_id}", status_code=status.HTTP_200_OK)
 def delete_classroom(

@@ -96,6 +96,59 @@ class TestScoringAndPoints:
         base_events = [e for e in events2 if e.event_type == PointEventType.ACCEPTED]
         assert len(base_events) == 0
 
+    def test_accepted_points_awarded_again_in_a_different_classroom(self, db_session):
+        """
+        A shared problem solved once (e.g. via practice, with no assignment_id)
+        must still earn base points the first time it's solved *through an
+        assignment in a classroom* - and again in a second classroom - since
+        each classroom's leaderboard counts it as newly solved there. Points
+        must not be silently withheld just because the student solved this
+        problem somewhere else before.
+        """
+        teacher = User(name="Teacher", email="teacher_sc@test.com", password_hash="hash", role=UserRole.TEACHER)
+        student = User(name="Alex", email="alex_sc@test.com", password_hash="hash", role=UserRole.STUDENT)
+        prob = Problem(title="Shared", description="desc", difficulty=ProblemDifficulty.EASY, created_by=1)
+        db_session.add_all([teacher, student, prob])
+        db_session.commit()
+
+        classroom_a = Classroom(teacher_id=teacher.id, name="A", join_code="JOINA")
+        classroom_b = Classroom(teacher_id=teacher.id, name="B", join_code="JOINB")
+        db_session.add_all([classroom_a, classroom_b])
+        db_session.commit()
+
+        assignment_a = Assignment(classroom_id=classroom_a.id, teacher_id=teacher.id, title="A1", status=AssignmentStatus.PUBLISHED)
+        assignment_b = Assignment(classroom_id=classroom_b.id, teacher_id=teacher.id, title="B1", status=AssignmentStatus.PUBLISHED)
+        db_session.add_all([assignment_a, assignment_b])
+        db_session.commit()
+
+        # Solved once with no assignment context (e.g. practice attempt).
+        sub_practice = Submission(user_id=student.id, problem_id=prob.id, language="python", source_code="print(1)", status=SubmissionStatus.ACCEPTED, execution_time=0.5)
+        db_session.add(sub_practice)
+        db_session.commit()
+        events_practice = ScoringService.process_submission_scoring(db_session, sub_practice, prob)
+        assert any(e.event_type == PointEventType.ACCEPTED for e in events_practice)
+
+        # Solved again through classroom A's assignment - should still earn base points.
+        sub_a = Submission(user_id=student.id, problem_id=prob.id, language="python", source_code="print(1)", status=SubmissionStatus.ACCEPTED, execution_time=0.5, assignment_id=assignment_a.id)
+        db_session.add(sub_a)
+        db_session.commit()
+        events_a = ScoringService.process_submission_scoring(db_session, sub_a, prob)
+        assert any(e.event_type == PointEventType.ACCEPTED for e in events_a)
+
+        # Solved again through classroom B's assignment - should also earn base points.
+        sub_b = Submission(user_id=student.id, problem_id=prob.id, language="python", source_code="print(1)", status=SubmissionStatus.ACCEPTED, execution_time=0.5, assignment_id=assignment_b.id)
+        db_session.add(sub_b)
+        db_session.commit()
+        events_b = ScoringService.process_submission_scoring(db_session, sub_b, prob)
+        assert any(e.event_type == PointEventType.ACCEPTED for e in events_b)
+
+        # But resubmitting again under classroom A's assignment must NOT re-award base points.
+        sub_a_again = Submission(user_id=student.id, problem_id=prob.id, language="python", source_code="print(1)", status=SubmissionStatus.ACCEPTED, execution_time=0.5, assignment_id=assignment_a.id)
+        db_session.add(sub_a_again)
+        db_session.commit()
+        events_a_again = ScoringService.process_submission_scoring(db_session, sub_a_again, prob)
+        assert not any(e.event_type == PointEventType.ACCEPTED for e in events_a_again)
+
     def test_wrong_answer_and_penalties(self, db_session):
         user = User(name="Alex", email="alex3@test.com", password_hash="hash", role=UserRole.STUDENT)
         prob = Problem(title="P1", description="desc", difficulty=ProblemDifficulty.EASY, created_by=1)

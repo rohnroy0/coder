@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import Editor from '@monaco-editor/react';
 import { Play, RotateCcw, Loader2, Code2, ClipboardX } from 'lucide-react';
 
@@ -45,19 +45,11 @@ export const CodeEditor = ({
   loading = false,
   running = false,
   language = 'python',
-  disablePaste = false,
 }) => {
   const meta = LANGUAGE_META[language] || LANGUAGE_META.python;
   const template = STARTER_TEMPLATES[language] || STARTER_TEMPLATES.python;
 
   const [pasteBlockedFlash, setPasteBlockedFlash] = useState(false);
-  // The paste listener is attached once at editor mount, but `disablePaste` can
-  // flip after that (it loads async) - a ref keeps the listener reading the
-  // current value instead of closing over whatever it was at mount time.
-  const disablePasteRef = useRef(disablePaste);
-  useEffect(() => {
-    disablePasteRef.current = disablePaste;
-  }, [disablePaste]);
 
   const handleReset = () => {
     if (window.confirm('Reset editor to default template?')) {
@@ -71,31 +63,24 @@ export const CodeEditor = ({
   };
 
   const handleEditorMount = (editor, monaco) => {
-    // Primary: Monaco/VS Code's editor core often handles Ctrl+V by reading the
-    // clipboard directly via the async Clipboard API in response to the
-    // keydown - it does NOT always go through a native browser "paste" DOM
-    // event, so a plain event listener alone can't reliably catch it. Binding
-    // our own command to the same keystroke on this editor instance overrides
-    // Monaco's built-in paste action entirely.
+    // Pasting into the code editor is always disabled (anti-cheating). The
+    // Ctrl+V command intercepts the keystroke before Monaco's own handling
+    // runs - necessary because Monaco doesn't bind Ctrl+V itself in the
+    // browser, deferring to native paste instead. The native "paste" event
+    // listener is a fallback for triggers that don't go through this
+    // keybinding at all (browser Edit menu, right-click "Paste", middle-click
+    // paste).
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyV, () => {
-      if (disablePasteRef.current) {
-        flashPasteBlocked();
-        return;
-      }
-      editor.trigger('keyboard', 'editor.action.clipboardPasteAction', null);
+      flashPasteBlocked();
     });
 
-    // Fallback: still block the native browser paste event too, in case it's
-    // triggered some other way (browser Edit menu, middle-click paste, etc.)
     const domNode = editor.getDomNode();
     domNode?.addEventListener(
       'paste',
       (e) => {
-        if (disablePasteRef.current) {
-          e.preventDefault();
-          e.stopPropagation();
-          flashPasteBlocked();
-        }
+        e.preventDefault();
+        e.stopPropagation();
+        flashPasteBlocked();
       },
       true
     );
@@ -109,15 +94,13 @@ export const CodeEditor = ({
           <Code2 className="w-4 h-4 text-indigo-400" />
           <span>{meta.filename}</span>
           <span className="bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full text-[10px]">{meta.label}</span>
-          {disablePaste && (
-            <span
-              className="flex items-center space-x-1 bg-rose-950/60 text-rose-300 border border-rose-800/60 px-2 py-0.5 rounded-full text-[10px] font-semibold"
-              title="Your teacher has disabled pasting into this editor for this classroom"
-            >
-              <ClipboardX className="w-3 h-3" />
-              <span>Paste Disabled</span>
-            </span>
-          )}
+          <span
+            className="flex items-center space-x-1 bg-rose-950/60 text-rose-300 border border-rose-800/60 px-2 py-0.5 rounded-full text-[10px] font-semibold"
+            title="Pasting into the code editor is disabled"
+          >
+            <ClipboardX className="w-3 h-3" />
+            <span>Paste Disabled</span>
+          </span>
         </div>
 
         <div className="flex items-center space-x-2">
@@ -171,11 +154,11 @@ export const CodeEditor = ({
       </div>
 
       {/* Monaco Editor */}
-      <div className="flex-1 min-h-[300px] relative">
+      <div className="flex-1 min-h-0 relative">
         {pasteBlockedFlash && (
           <div className="absolute top-2 right-2 z-10 flex items-center space-x-1.5 bg-rose-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow-lg">
             <ClipboardX className="w-3.5 h-3.5" />
-            <span>Pasting is disabled for this classroom</span>
+            <span>Pasting is disabled</span>
           </div>
         )}
         <Editor

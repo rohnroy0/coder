@@ -42,6 +42,7 @@ class ProblemResponse(BaseModel):
     created_by: int
     created_at: datetime
     test_case_count: int = 0
+    solved: bool = False
     
     class Config:
         from_attributes = True

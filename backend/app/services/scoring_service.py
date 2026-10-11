@@ -48,10 +48,17 @@ class ScoringService:
 
         if submission.status == SubmissionStatus.ACCEPTED:
             # Check if base ACCEPTED points were already awarded for this problem
+            # *within this same classroom* (or, for classroom_id None, within
+            # practice submissions). Scoped per classroom_id - not globally per
+            # problem - so that a problem reused across several classrooms (or
+            # solved once in practice and later through an assignment) still
+            # earns points the first time it's solved in each classroom, which
+            # keeps this in sync with the leaderboard's per-classroom solved count.
             already_solved = db.query(StudentPointsEvent).filter(
                 StudentPointsEvent.student_id == student_id,
                 StudentPointsEvent.submission_id != submission.id,
-                StudentPointsEvent.event_type == PointEventType.ACCEPTED
+                StudentPointsEvent.event_type == PointEventType.ACCEPTED,
+                StudentPointsEvent.classroom_id == classroom_id
             ).join(Submission, StudentPointsEvent.submission_id == Submission.id).filter(
                 Submission.problem_id == problem_id
             ).first() is not None
@@ -96,14 +103,16 @@ class ScoringService:
                     events_created.append(ev_clean)
 
         elif submission.status in (SubmissionStatus.WRONG_ANSWER, SubmissionStatus.RUNTIME_ERROR, SubmissionStatus.TIME_LIMIT_EXCEEDED):
-            # Count penalties already applied for this student on this problem
+            # Count penalties already applied for this student on this problem,
+            # scoped per classroom_id for the same reason as already_solved above.
             penalty_types = [PointEventType.WRONG_ANSWER, PointEventType.RUNTIME_ERROR, PointEventType.TIME_LIMIT_EXCEEDED]
             penalty_count = db.query(StudentPointsEvent).join(
                 Submission, StudentPointsEvent.submission_id == Submission.id
             ).filter(
                 StudentPointsEvent.student_id == student_id,
                 Submission.problem_id == problem_id,
-                StudentPointsEvent.event_type.in_(penalty_types)
+                StudentPointsEvent.event_type.in_(penalty_types),
+                StudentPointsEvent.classroom_id == classroom_id
             ).count()
 
             if penalty_count < settings.MAX_PENALTY_EVENTS_PER_PROBLEM:

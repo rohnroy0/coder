@@ -1,6 +1,6 @@
 from app.core.time import utcnow
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from app.database.base import Base
 
@@ -12,9 +12,6 @@ class Classroom(Base):
     name = Column(String(150), nullable=False)
     description = Column(Text, nullable=True)
     join_code = Column(String(20), unique=True, index=True, nullable=False)
-    # Anti-cheating: when true, students cannot paste into the code editor
-    # for problems solved within this classroom (via an assignment).
-    disable_paste = Column(Boolean, nullable=False, default=False, server_default="0")
     created_at = Column(DateTime, default=utcnow, nullable=False)
 
     # Relationships

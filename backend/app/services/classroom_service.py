@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from app.models.classroom import Classroom, ClassroomMember
 from app.models.user import User
-from app.schemas.classroom import ClassroomCreate, ClassroomJoin, ClassroomSettingsUpdate
+from app.schemas.classroom import ClassroomCreate, ClassroomJoin
 
 def generate_unique_join_code(db: Session, prefix: str = "PY") -> str:
     """Generate a unique 7-character join code like PY10192"""
@@ -87,21 +87,6 @@ class ClassroomService:
         )
         db.add(membership)
         db.commit()
-        return classroom
-
-    @staticmethod
-    def update_settings(db: Session, classroom_id: int, teacher_id: int, schema: ClassroomSettingsUpdate) -> Classroom:
-        classroom = db.query(Classroom).filter(Classroom.id == classroom_id).first()
-        if not classroom:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Classroom not found")
-        if classroom.teacher_id != teacher_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You are not authorized to modify this classroom"
-            )
-        classroom.disable_paste = schema.disable_paste
-        db.commit()
-        db.refresh(classroom)
         return classroom
 
     @staticmethod

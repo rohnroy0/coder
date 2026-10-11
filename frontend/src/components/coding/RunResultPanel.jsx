@@ -1,5 +1,6 @@
 import React from 'react';
 import { CheckCircle2, XCircle, AlertTriangle, Clock, Loader2, Terminal } from 'lucide-react';
+import AITutorPanel from './AITutorPanel';
 
 const STATUS_META = {
   PASSED: { label: 'Passed', color: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10', icon: CheckCircle2 },
@@ -8,7 +9,7 @@ const STATUS_META = {
   TIME_LIMIT_EXCEEDED: { label: 'Time Limit Exceeded', color: 'text-purple-400 border-purple-500/30 bg-purple-500/10', icon: Clock },
 };
 
-export const RunResultPanel = ({ result, loading }) => {
+export const RunResultPanel = ({ result, loading, problemId, language, sourceCode }) => {
   if (loading) {
     return (
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 text-slate-300 flex items-center justify-center space-x-3">
@@ -92,6 +93,13 @@ export const RunResultPanel = ({ result, loading }) => {
           </div>
         );
       })}
+
+      {!all_passed && (
+        <AITutorPanel
+          runContext={{ problemId, language, sourceCode }}
+          status={results.find((r) => !r.passed)?.status || 'WRONG_ANSWER'}
+        />
+      )}
     </div>
   );
 };

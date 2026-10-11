@@ -14,9 +14,16 @@ class AIFeedbackContent(BaseModel):
 class AIFeedbackRequest(BaseModel):
     hint_level: int = Field(default=1, ge=1, le=3, description="Progressive hint level (1=conceptual, 2=directional, 3=specific)")
 
+class RunFeedbackRequest(BaseModel):
+    problem_id: int
+    language: str
+    source_code: str
+    status: str = Field(..., description="The failing status from a Run result: WRONG_ANSWER, RUNTIME_ERROR, or TIME_LIMIT_EXCEEDED")
+    hint_level: int = Field(default=1, ge=1, le=3, description="Progressive hint level (1=conceptual, 2=directional, 3=specific)")
+
 class AIFeedbackResponse(BaseModel):
     id: Optional[int] = None
-    submission_id: int
+    submission_id: Optional[int] = None
     status: str
     hint_level: int
     feedback: AIFeedbackContent

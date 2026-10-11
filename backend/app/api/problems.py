@@ -4,6 +4,7 @@ from typing import List
 
 from app.database.session import get_db
 from app.models.problem import Problem, TestCase, ProblemStatus
+from app.models.submission import Submission, SubmissionStatus
 from app.models.user import User, UserRole
 from app.schemas.problem import ProblemCreate, ProblemResponse, TestCaseCreate, TestCaseResponse
 from app.schemas.ai import AIGenerateRequest, AIGenerateResponse
@@ -126,8 +127,18 @@ def get_problems(
     else:
         problems = db.query(Problem).all()
 
+    solved_problem_ids = set()
+    if current_user.role == UserRole.STUDENT:
+        solved_problem_ids = {
+            row[0] for row in db.query(Submission.problem_id).filter(
+                Submission.user_id == current_user.id,
+                Submission.status == SubmissionStatus.ACCEPTED
+            ).distinct().all()
+        }
+
     for p in problems:
         p.test_case_count = db.query(TestCase).filter(TestCase.problem_id == p.id).count()
+        p.solved = p.id in solved_problem_ids
     return problems
 
 @router.get("/{problem_id}", response_model=ProblemResponse)
@@ -149,6 +160,13 @@ def get_problem(
         raise HTTPException(status_code=404, detail="Problem not found")
 
     problem.test_case_count = db.query(TestCase).filter(TestCase.problem_id == problem.id).count()
+    problem.solved = False
+    if current_user.role == UserRole.STUDENT:
+        problem.solved = db.query(Submission).filter(
+            Submission.user_id == current_user.id,
+            Submission.problem_id == problem.id,
+            Submission.status == SubmissionStatus.ACCEPTED
+        ).first() is not None
     return problem
 
 @router.get("/{problem_id}/sample-testcases", response_model=List[TestCaseResponse])

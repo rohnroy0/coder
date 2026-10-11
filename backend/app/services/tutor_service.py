@@ -54,22 +54,25 @@ class TutorService:
         else:
             self.provider = OllamaProvider()
 
-    def generate_feedback(
+    def _generate_validated_feedback(
         self,
-        db: Session,
-        submission: Submission,
         problem: Problem,
-        student_id: int,
-        hint_level: int = 1,
-        attempt_number: int = 1
-    ) -> AIFeedbackResponse:
+        language: str,
+        status_value: str,
+        execution_time: Optional[float],
+        source_code: str,
+        hint_level: int,
+        attempt_number: int,
+        log_context: str
+    ) -> AIFeedbackContent:
         """
-        Main AI Tutor Feedback Generation Pipeline.
-        Enforces backend security by isolating prompt inputs from hidden test cases and reference solution.
+        Shared prompt-building + retry/anti-solution-validation pipeline, independent
+        of whether the caller has a persisted Submission. Enforces backend security by
+        isolating prompt inputs from hidden test cases and reference solution.
         """
         # Security pre-check: Ensure reference solution & hidden tests are NEVER included in AI prompt payload
         public_examples = problem.examples or "[]"
-        
+
         user_prompt = (
             f"EVALUATION REQUEST:\n"
             f"Problem Title: {problem.title}\n"
@@ -78,13 +81,13 @@ class TutorService:
             f"Input Format: {problem.input_format or 'N/A'}\n"
             f"Output Format: {problem.output_format or 'N/A'}\n"
             f"Public Sample Examples: {public_examples}\n"
-            f"Programming Language: {submission.language}\n"
-            f"Submission Status: {submission.status.value}\n"
-            f"Execution Time: {submission.execution_time or 'N/A'}s\n"
+            f"Programming Language: {language}\n"
+            f"Submission Status: {status_value}\n"
+            f"Execution Time: {execution_time or 'N/A'}s\n"
             f"Attempt Number: {attempt_number}\n"
             f"Requested Hint Level: {hint_level}\n\n"
             f"STUDENT SOURCE CODE:\n"
-            f"```\n{submission.source_code}\n```\n\n"
+            f"```\n{source_code}\n```\n\n"
             f"Please generate structured Socratic tutor feedback for Hint Level {hint_level} in strict JSON format."
         )
 
@@ -99,7 +102,7 @@ class TutorService:
             if feedback_history:
                 current_prompt += f"\n\nPREVIOUS RESPONSE REJECTED WITH ERROR:\n{feedback_history}\nPlease fix all issues and output valid Socratic JSON."
 
-            logger.info(f"[TutorService] Generating AI feedback attempt {attempt}/{max_attempts} for submission {submission.id}, Hint Level {hint_level}...")
+            logger.info(f"[TutorService] Generating AI feedback attempt {attempt}/{max_attempts} for {log_context}, Hint Level {hint_level}...")
 
             try:
                 raw_response = self.provider.generate_structured_response(
@@ -151,12 +154,37 @@ class TutorService:
             logger.error("[TutorService] Max retries exhausted. Providing safe fallback Socratic response.")
             parsed_feedback = AIFeedbackContent(
                 summary="Code evaluation completed.",
-                error_type=ErrorCategory.LOGIC_ERROR if submission.status != SubmissionStatus.ACCEPTED else ErrorCategory.OTHER,
+                error_type=ErrorCategory.LOGIC_ERROR if status_value != SubmissionStatus.ACCEPTED.value else ErrorCategory.OTHER,
                 explanation="Your implementation was processed by the evaluation engine.",
                 hint=f"Review your logic carefully around condition boundaries and expected inputs (Hint Level {hint_level}).",
                 next_step="Try tracing your code line-by-line with a simple sample input.",
                 confidence=0.8
             )
+
+        return parsed_feedback
+
+    def generate_feedback(
+        self,
+        db: Session,
+        submission: Submission,
+        problem: Problem,
+        student_id: int,
+        hint_level: int = 1,
+        attempt_number: int = 1
+    ) -> AIFeedbackResponse:
+        """
+        Main AI Tutor Feedback Generation Pipeline for a real, persisted Submission.
+        """
+        parsed_feedback = self._generate_validated_feedback(
+            problem=problem,
+            language=submission.language,
+            status_value=submission.status.value,
+            execution_time=submission.execution_time,
+            source_code=submission.source_code,
+            hint_level=hint_level,
+            attempt_number=attempt_number,
+            log_context=f"submission {submission.id}"
+        )
 
         # Save feedback to DB
         db_feedback = AIFeedback(
@@ -181,4 +209,37 @@ class TutorService:
             hint_level=hint_level,
             feedback=parsed_feedback,
             created_at=db_feedback.created_at
+        )
+
+    def generate_feedback_for_run(
+        self,
+        problem: Problem,
+        language: str,
+        source_code: str,
+        status_value: str,
+        hint_level: int = 1
+    ) -> AIFeedbackResponse:
+        """
+        Same Socratic pipeline and anti-solution guard as generate_feedback, but for a
+        "Run" result against the sample test cases - which, like Run itself, is never
+        persisted (no Submission row exists yet to attach feedback history to).
+        """
+        parsed_feedback = self._generate_validated_feedback(
+            problem=problem,
+            language=language,
+            status_value=status_value,
+            execution_time=None,
+            source_code=source_code,
+            hint_level=hint_level,
+            attempt_number=1,
+            log_context=f"run on problem {problem.id}"
+        )
+
+        return AIFeedbackResponse(
+            id=None,
+            submission_id=None,
+            status=status_value,
+            hint_level=hint_level,
+            feedback=parsed_feedback,
+            created_at=None
         )

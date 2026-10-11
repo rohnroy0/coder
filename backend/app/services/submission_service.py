@@ -207,12 +207,22 @@ class SubmissionService:
         # Phase 6: Trigger Scoring Service to compute points & events
         ScoringService.process_submission_scoring(db, submission, problem)
 
-        # Phase 7: Sync Assignment Progress if submitted under an assignment
+        # Phase 7: Sync Assignment Progress. Beyond the assignment this submission
+        # was explicitly made under (if any), also sync every other assignment in
+        # one of the student's classrooms that contains this same problem -
+        # problems are shared/reusable across assignments, so solving one must
+        # count everywhere it's assigned, not only when reached through that
+        # specific assignment's link.
+        from app.services.assignment_service import AssignmentService
+        assignment_ids_to_sync = AssignmentService.find_student_assignments_for_problem(
+            db, student.id, problem.id
+        )
         if schema.assignment_id:
-            from app.services.assignment_service import AssignmentService
+            assignment_ids_to_sync.add(schema.assignment_id)
+        for aid in assignment_ids_to_sync:
             AssignmentService.sync_student_progress_on_submission(
                 db=db,
-                assignment_id=schema.assignment_id,
+                assignment_id=aid,
                 student_id=student.id,
                 problem_id=problem.id,
                 submission_status=submission.status

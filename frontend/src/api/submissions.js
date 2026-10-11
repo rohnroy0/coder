@@ -26,6 +26,18 @@ export const submissionsApi = {
     return response.data;
   },
 
+  getRunFeedback: async ({ problemId, language, sourceCode, status, hintLevel = 1 }) => {
+    // Feedback for a failing "Run" result - no submission exists yet to key off.
+    const response = await apiClient.post('/submissions/run/feedback', {
+      problem_id: problemId,
+      language,
+      source_code: sourceCode,
+      status,
+      hint_level: hintLevel,
+    });
+    return response.data;
+  },
+
   getFeedbackHistory: async (submissionId) => {
     const response = await apiClient.get(`/submissions/${submissionId}/feedback`);
     return response.data;

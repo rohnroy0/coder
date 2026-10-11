@@ -54,3 +54,16 @@ class AIService:
         """Generates Socratic AI Tutor feedback for a student submission."""
         logger.info(f"[AIService] Student ID {student_id} requested AI Tutor feedback for submission {submission.id} (Hint Level {hint_level})...")
         return self.tutor.generate_feedback(db, submission, problem, student_id, hint_level, attempt_number)
+
+    def generate_tutor_feedback_for_run(
+        self,
+        problem: Problem,
+        student_id: int,
+        language: str,
+        source_code: str,
+        status_value: str,
+        hint_level: int = 1
+    ) -> AIFeedbackResponse:
+        """Generates Socratic AI Tutor feedback for a failing "Run" result (no persisted submission)."""
+        logger.info(f"[AIService] Student ID {student_id} requested AI Tutor feedback for a Run on problem {problem.id} (Hint Level {hint_level})...")
+        return self.tutor.generate_feedback_for_run(problem, language, source_code, status_value, hint_level)

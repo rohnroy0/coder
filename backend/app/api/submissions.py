@@ -6,14 +6,14 @@ from typing import List, Optional
 from app.database.session import get_db
 from app.models.user import User, UserRole
 from app.models.submission import Submission, SubmissionStatus
-from app.models.problem import Problem
+from app.models.problem import Problem, ProblemStatus
 from app.models.classroom import Classroom, ClassroomMember
 from app.models.feedback import AIFeedback
 from app.schemas.submission import SubmissionCreate, SubmissionResponse, SubmissionHistoryResponse, RunRequest, RunResponse
-from app.schemas.feedback import AIFeedbackRequest, AIFeedbackResponse, AIFeedbackContent
+from app.schemas.feedback import AIFeedbackRequest, AIFeedbackResponse, AIFeedbackContent, RunFeedbackRequest
 from app.dependencies.auth import get_current_user, get_current_student
 from app.services.submission_service import SubmissionService
-from app.services.code_runner import SandboxUnavailableError
+from app.services.code_runner import SandboxUnavailableError, SUPPORTED_LANGUAGES
 from app.services.ai_service import AIService
 from app.services.ollama_provider import AIServiceUnavailableException
 
@@ -57,6 +57,60 @@ def run_code_against_samples(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Code execution sandbox is unavailable. Ensure Docker is running and try again."
+        )
+
+
+@router.post("/run/feedback", response_model=AIFeedbackResponse, status_code=status.HTTP_200_OK)
+def get_ai_tutor_feedback_for_run(
+    request: RunFeedbackRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_student)
+):
+    """
+    Generate Socratic AI Tutor feedback for a failing "Run" result, before the
+    student has used "Submit" at all. Like Run itself, nothing is persisted here -
+    no submission is created and no feedback history is saved for it.
+    """
+    allowed_statuses = {
+        SubmissionStatus.WRONG_ANSWER.value,
+        SubmissionStatus.RUNTIME_ERROR.value,
+        SubmissionStatus.TIME_LIMIT_EXCEEDED.value,
+    }
+    if request.status not in allowed_statuses:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"status must be one of {sorted(allowed_statuses)} - no hint is needed for a passing run."
+        )
+
+    if request.language.lower() not in SUPPORTED_LANGUAGES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported language. Supported languages: {', '.join(SUPPORTED_LANGUAGES)}."
+        )
+
+    problem = db.query(Problem).filter(Problem.id == request.problem_id).first()
+    if not problem or problem.status != ProblemStatus.VERIFIED:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Problem not found")
+
+    try:
+        ai_service = AIService()
+        return ai_service.generate_tutor_feedback_for_run(
+            problem=problem,
+            student_id=current_user.id,
+            language=request.language,
+            source_code=request.source_code,
+            status_value=request.status,
+            hint_level=request.hint_level
+        )
+    except AIServiceUnavailableException:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI Tutor is currently unavailable. Please try again later."
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred while generating AI feedback: {str(e)}"
         )
 
 

@@ -254,6 +254,17 @@ class AssignmentService:
                     detail="Assignment is not available."
                 )
 
+        # Problems this student has already solved (any ACCEPTED submission),
+        # so the roster can mark them solved without blocking re-attempts.
+        solved_problem_ids = set()
+        if current_user.role == UserRole.STUDENT:
+            solved_problem_ids = {
+                row[0] for row in db.query(Submission.problem_id).filter(
+                    Submission.user_id == current_user.id,
+                    Submission.status == SubmissionStatus.ACCEPTED
+                ).distinct().all()
+            }
+
         # Build problems list formatted
         problems_data = []
         for ap in assignment.problems:
@@ -266,7 +277,8 @@ class AssignmentService:
                 "order": ap.order,
                 "title": prob.title if prob else "Unknown",
                 "difficulty": prob.difficulty.value if prob and hasattr(prob.difficulty, 'value') else (prob.difficulty if prob else None),
-                "topic": prob.topic if prob else None
+                "topic": prob.topic if prob else None,
+                "solved": ap.problem_id in solved_problem_ids
             })
 
         result = {
@@ -402,24 +414,25 @@ class AssignmentService:
         if prog.status == AssignmentProgressStatus.NOT_STARTED:
             prog.status = AssignmentProgressStatus.IN_PROGRESS
 
-        if submission_status == SubmissionStatus.ACCEPTED:
-            # Check if student already solved this problem in this assignment
-            accepted_count = db.query(Submission).filter(
-                Submission.assignment_id == assignment_id,
-                Submission.user_id == student_id,
-                Submission.problem_id == problem_id,
-                Submission.status == SubmissionStatus.ACCEPTED
-            ).count()
+        # Recomputed from scratch (not incremented) so a problem counts as
+        # complete for this assignment the moment the student has ANY
+        # ACCEPTED submission for it - whether made through this assignment's
+        # own link, a different assignment sharing the same problem, or the
+        # general problem browser. This also makes the function idempotent:
+        # calling it again for the same event can't double-count.
+        assignment_problem_ids = [ap.problem_id for ap in assignment.problems]
+        solved_ids = set()
+        if assignment_problem_ids:
+            solved_ids = {
+                row[0] for row in db.query(Submission.problem_id).filter(
+                    Submission.user_id == student_id,
+                    Submission.problem_id.in_(assignment_problem_ids),
+                    Submission.status == SubmissionStatus.ACCEPTED
+                ).distinct()
+            }
 
-            if accepted_count == 1:
-                # First accepted submission for this problem in this assignment
-                ap = db.query(AssignmentProblem).filter(
-                    AssignmentProblem.assignment_id == assignment_id,
-                    AssignmentProblem.problem_id == problem_id
-                ).first()
-                pts = ap.points if ap else 100
-                prog.completed_problems += 1
-                prog.score += pts
+        prog.completed_problems = len(solved_ids)
+        prog.score = sum(ap.points for ap in assignment.problems if ap.problem_id in solved_ids)
 
         if prog.completed_problems >= total_problems and total_problems > 0:
             prog.status = AssignmentProgressStatus.COMPLETED
@@ -427,3 +440,28 @@ class AssignmentService:
                 prog.completed_at = utcnow()
 
         db.commit()
+
+    @staticmethod
+    def find_student_assignments_for_problem(db: Session, student_id: int, problem_id: int) -> set:
+        """
+        IDs of every non-draft assignment containing this problem, in a classroom
+        the student belongs to. Used to retroactively sync progress on assignments
+        a solved problem belongs to even when the submission that solved it wasn't
+        made through that assignment's own link.
+        """
+        classroom_ids = [
+            row[0] for row in db.query(ClassroomMember.classroom_id).filter(
+                ClassroomMember.student_id == student_id
+            )
+        ]
+        if not classroom_ids:
+            return set()
+
+        rows = db.query(Assignment.id).join(
+            AssignmentProblem, AssignmentProblem.assignment_id == Assignment.id
+        ).filter(
+            Assignment.classroom_id.in_(classroom_ids),
+            Assignment.status != AssignmentStatus.DRAFT,
+            AssignmentProblem.problem_id == problem_id
+        )
+        return {row[0] for row in rows}

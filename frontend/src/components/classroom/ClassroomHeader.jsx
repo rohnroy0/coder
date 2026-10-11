@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
-import { School, Copy, Check, Users, Calendar, ClipboardX } from 'lucide-react';
+import { School, Copy, Check, Users, Calendar } from 'lucide-react';
 
 export const ClassroomHeader = ({
   classroom,
   studentCount = 0,
   isTeacher = false,
-  onTogglePasteDisabled,
-  pasteToggleLoading = false,
 }) => {
   const [copied, setCopied] = useState(false);
 
@@ -69,37 +67,6 @@ export const ClassroomHeader = ({
                 )}
               </button>
             </div>
-
-            {onTogglePasteDisabled && (
-              <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-xl flex items-center space-x-3">
-                <div className="p-2 bg-white border border-slate-200 rounded-lg text-slate-500">
-                  <ClipboardX className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-xs text-slate-500 font-medium">Paste in Code Editor</div>
-                  <div className={`font-bold text-sm ${classroom.disable_paste ? 'text-rose-600' : 'text-emerald-600'}`}>
-                    {classroom.disable_paste ? 'Disabled for students' : 'Allowed'}
-                  </div>
-                </div>
-                <button
-                  onClick={onTogglePasteDisabled}
-                  disabled={pasteToggleLoading}
-                  role="switch"
-                  aria-checked={classroom.disable_paste}
-                  aria-label="Toggle whether students can paste into the code editor"
-                  title={classroom.disable_paste ? 'Click to allow pasting again' : 'Click to block pasting for students'}
-                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
-                    classroom.disable_paste ? 'bg-rose-500' : 'bg-slate-300'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                      classroom.disable_paste ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
-              </div>
-            )}
           </div>
         )}
       </div>

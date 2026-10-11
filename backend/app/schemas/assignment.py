@@ -17,6 +17,7 @@ class AssignmentProblemResponse(BaseModel):
     title: Optional[str] = None
     difficulty: Optional[str] = None
     topic: Optional[str] = None
+    solved: bool = False
 
     class Config:
         from_attributes = True

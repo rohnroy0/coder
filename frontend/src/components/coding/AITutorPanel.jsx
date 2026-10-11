@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { submissionsApi } from '../../api/submissions';
 
-export const AITutorPanel = ({ submissionId, status }) => {
+export const AITutorPanel = ({ submissionId, runContext, status }) => {
   const [feedback, setFeedback] = useState(null);
   const [hintLevel, setHintLevel] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -24,12 +24,14 @@ export const AITutorPanel = ({ submissionId, status }) => {
   }
 
   const fetchFeedback = async (level) => {
-    if (!submissionId) return;
+    if (!submissionId && !runContext) return;
     setLoading(true);
     setError('');
 
     try {
-      const data = await submissionsApi.getFeedback(submissionId, level);
+      const data = submissionId
+        ? await submissionsApi.getFeedback(submissionId, level)
+        : await submissionsApi.getRunFeedback({ ...runContext, status, hintLevel: level });
       setFeedback(data);
       setHintLevel(level);
     } catch (err) {

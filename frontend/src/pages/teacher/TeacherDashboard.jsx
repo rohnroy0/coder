@@ -1,27 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { classroomsApi } from '../../api/classrooms';
-import { problemsApi } from '../../api/problems';
 import ClassroomCard from '../../components/classroom/ClassroomCard';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
-import { School, Code2, PlusCircle, ArrowRight, Layers } from 'lucide-react';
+import { School, PlusCircle, ArrowRight } from 'lucide-react';
 
 export const TeacherDashboard = () => {
   const [classrooms, setClassrooms] = useState([]);
-  const [problems, setProblems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [clsData, probData] = await Promise.all([
-          classroomsApi.getTeacherClassrooms(),
-          problemsApi.getProblems(),
-        ]);
+        const clsData = await classroomsApi.getTeacherClassrooms();
         setClassrooms(clsData);
-        setProblems(probData);
       } catch (err) {
         console.error('Failed to load dashboard data:', err);
         setError('Unable to load teacher dashboard metrics.');
@@ -46,7 +40,7 @@ export const TeacherDashboard = () => {
       <ErrorMessage message={error} />
 
       {/* Metrics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
             <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Classrooms</div>
@@ -54,16 +48,6 @@ export const TeacherDashboard = () => {
           </div>
           <div className="p-3 bg-purple-50 text-purple-600 rounded-xl">
             <School className="w-6 h-6" />
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
-          <div>
-            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Coding Problems</div>
-            <div className="text-3xl font-extrabold text-slate-900 mt-2">{problems.length}</div>
-          </div>
-          <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
-            <Code2 className="w-6 h-6" />
           </div>
         </div>
 

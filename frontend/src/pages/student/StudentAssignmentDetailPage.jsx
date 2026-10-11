@@ -142,6 +142,15 @@ export const StudentAssignmentDetailPage = () => {
                 <div className="flex items-center space-x-2">
                   <span className="font-mono text-slate-400 font-bold">#{idx + 1}</span>
                   <span className="font-bold text-slate-900 text-sm">{prob.title}</span>
+                  {prob.solved && (
+                    <span
+                      className="inline-flex items-center space-x-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[10px] font-bold"
+                      title="You've already solved this problem - you can solve it again if you'd like."
+                    >
+                      <CheckCircle2 className="w-3 h-3" />
+                      <span>Solved</span>
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center space-x-3 text-slate-500">
                   <span className="font-semibold">Difficulty: {prob.difficulty || 'EASY'}</span>
@@ -155,7 +164,7 @@ export const StudentAssignmentDetailPage = () => {
                   to={`/student/problems/${prob.problem_id}/code?assignment_id=${assignment.id}`}
                   className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition-colors shadow-xs"
                 >
-                  <span>Solve Problem</span>
+                  <span>{prob.solved ? 'Solve Again' : 'Solve Problem'}</span>
                   <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>

@@ -20,7 +20,6 @@ export const ClassroomDetails = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [pasteToggleLoading, setPasteToggleLoading] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -54,22 +53,6 @@ export const ClassroomDetails = () => {
     if (id) fetchData();
   }, [id]);
 
-  const handleTogglePasteDisabled = async () => {
-    if (!classroom) return;
-    setPasteToggleLoading(true);
-    try {
-      const updated = await classroomsApi.updateClassroomSettings(id, {
-        disable_paste: !classroom.disable_paste,
-      });
-      setClassroom((prev) => ({ ...prev, disable_paste: updated.disable_paste }));
-    } catch (err) {
-      console.error('Failed to update paste setting:', err);
-      setError('Unable to update the paste setting. Please try again.');
-    } finally {
-      setPasteToggleLoading(false);
-    }
-  };
-
   if (loading) return <LoadingSpinner message="Loading classroom details & analytics..." />;
 
   const overview = analytics?.overview || {};
@@ -87,8 +70,6 @@ export const ClassroomDetails = () => {
             classroom={classroom}
             studentCount={classroom.students?.length || 0}
             isTeacher={true}
-            onTogglePasteDisabled={handleTogglePasteDisabled}
-            pasteToggleLoading={pasteToggleLoading}
           />
 
           {/* Navigation Tabs */}
