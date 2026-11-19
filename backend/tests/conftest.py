@@ -4,6 +4,18 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from fastapi.testclient import TestClient
 
+from app.core.config import settings
+
+# Hermetic test environment: the suite must not depend on the deployment's
+# backend/.env. Force deployment-specific settings to safe test values before
+# anything reads them, so tests behave the same on a developer laptop, in CI,
+# and against a machine whose .env sets a teacher code or a live AI provider.
+settings.TEACHER_SIGNUP_CODE = ""      # teacher registration helpers omit the code
+settings.AI_PROVIDER_TYPE = "mock"     # never hit a real LLM during tests
+settings.AI_API_KEY = ""               # no real hosted-provider key in tests
+settings.AI_API_BASE_URL = ""
+settings.AI_API_MODEL = ""
+
 from app.main import app as fastapi_app
 from app.database.base import Base
 from app.database.session import get_db
