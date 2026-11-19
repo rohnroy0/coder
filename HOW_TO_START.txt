@@ -1,0 +1,82 @@
+===========================================================
+  HOW TO START "CODER" — simple step-by-step
+===========================================================
+
+Your live app URL:
+  https://laptop-2cieedeq.tail166231.ts.net
+
+Teacher signup code (give only to teachers): see backend\.env
+Students do NOT need any code.
+
+
+-----------------------------------------------------------
+EVERY TIME YOU TURN THE LAPTOP ON
+-----------------------------------------------------------
+
+1. Connect to the internet (wifi on).
+
+2. Make sure TAILSCALE is running.
+   - Look for the Tailscale icon in the system tray
+     (bottom-right of the screen, near the clock).
+   - It usually starts by itself. If you don't see it,
+     open "Tailscale" from the Start menu and let it run.
+   - You do NOT need to log in again.
+
+3. Start the app:
+   - Open the project folder:
+     C:\Users\lenovo\Downloads\0_Main_project
+   - DOUBLE-CLICK "start.cmd"
+     (or in PowerShell run:  .\start.ps1 )
+
+4. Wait about 1 to 2 minutes.
+   - Two black windows open (backend + frontend). Leave them open.
+   - When it finishes it prints "All set."
+
+5. Done! Open your URL in a browser to check:
+   https://laptop-2cieedeq.tail166231.ts.net
+
+
+-----------------------------------------------------------
+WHILE USING IT (important for demos)
+-----------------------------------------------------------
+
+- KEEP THE LAPTOP AWAKE. If it sleeps, the site goes down.
+  (Settings > Power > set "Sleep" to Never while plugged in.)
+
+- KEEP THE TWO BLACK WINDOWS OPEN. Closing them stops the app.
+
+- Needs Docker Desktop (the start script launches it) and an
+  internet connection the whole time.
+
+
+-----------------------------------------------------------
+TO STOP IT
+-----------------------------------------------------------
+
+- Run:  .\stop.ps1
+  (or just shut down the laptop)
+
+
+-----------------------------------------------------------
+IF SOMETHING GOES WRONG
+-----------------------------------------------------------
+
+The URL won't open?
+  - 90% of the time: Tailscale isn't running (see step 2),
+    or the laptop went to sleep. Fix that and try again.
+
+Pages work but code "Run/Submit" fails?
+  - Docker Desktop may still be starting. Wait a minute and retry.
+
+The AI hint / AI generator says "unavailable"?
+  - Usually a temporary rate limit — wait a minute and try again.
+  - If it keeps failing, the Groq AI model may have been retired;
+    see backend\README.md for how to update AI_API_MODEL in
+    backend\.env, then restart the backend.
+
+Notes:
+  - The first start after a reboot is a bit slower (it rebuilds). Normal.
+  - To run in developer mode with hot-reload:  .\start.ps1 -Dev
+    (do NOT use -Dev for a demo — it can auto-refresh over the tunnel)
+
+===========================================================
