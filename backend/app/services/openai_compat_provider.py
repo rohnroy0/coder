@@ -14,7 +14,10 @@ logger = logging.getLogger(__name__)
 # AI_API_BASE_URL / AI_API_MODEL in .env override these defaults, so a model
 # retirement or URL change is a two-line config fix, never a code change.
 PRESETS: Dict[str, Tuple[str, str]] = {
-    "groq": ("https://api.groq.com/openai/v1", "llama-3.3-70b-versatile"),
+    # Groq rotates its model lineup; if this default 404s with
+    # "model_not_found", list live models with GET /openai/v1/models and set
+    # AI_API_MODEL in .env instead of editing code.
+    "groq": ("https://api.groq.com/openai/v1", "openai/gpt-oss-120b"),
     "gemini": ("https://generativelanguage.googleapis.com/v1beta/openai", "gemini-2.0-flash"),
     # Generic escape hatch: any OpenAI-compatible host (OpenRouter, Cerebras,
     # Mistral, a self-hosted vLLM, ...). Requires explicit base URL + model.
