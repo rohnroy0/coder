@@ -1,8 +1,15 @@
 # Start AI Code Classroom: Docker Desktop, Ollama, backend (:8100), frontend (:5180), then open the browser.
 # Anything already running is left as is, so it is safe to run this more than once.
-# Usage: .\start.ps1 [-NoBrowser]   (or double-click start.cmd)
+#
+# Usage: .\start.ps1 [-NoBrowser] [-Dev]   (or double-click start.cmd)
+#   default : serves the BUILT frontend (npm run build + npm run preview) - no
+#             hot-reload websocket, so the page never auto-refreshes. Best for
+#             demos and for access over the Tailscale tunnel / on mobile.
+#   -Dev    : serves the Vite dev server (npm run dev) with hot reload, for
+#             active development. The dev server's reload websocket can drop
+#             over a tunnel and refresh the page - don't use -Dev for a demo.
 
-param([switch]$NoBrowser)
+param([switch]$NoBrowser, [switch]$Dev)
 
 $ErrorActionPreference = 'Stop'
 $root     = $PSScriptRoot
@@ -111,9 +118,17 @@ if (Test-Port 5180) {
         Write-Host '    installing npm packages (first run only)...'
         Push-Location $frontend; npm install; Pop-Location
     }
+    if ($Dev) {
+        Write-Host '    dev mode: hot reload on (do not use for a demo over the tunnel)'
+        $frontendCmd = 'npm run dev'
+    } else {
+        Write-Host '    building frontend (production, no hot-reload)...'
+        Push-Location $frontend; npm run build; Pop-Location
+        $frontendCmd = 'npm run preview'
+    }
     Start-Process powershell -WorkingDirectory $frontend -ArgumentList @(
         '-NoExit', '-ExecutionPolicy', 'Bypass', '-Command',
-        "`$host.UI.RawUI.WindowTitle='AI Code Classroom - frontend :5180'; npm run dev"
+        "`$host.UI.RawUI.WindowTitle='AI Code Classroom - frontend :5180'; $frontendCmd"
     )
     if (Wait-Until { Test-Url $appUrl } 60 'Frontend') { Ok 'running' }
 }
