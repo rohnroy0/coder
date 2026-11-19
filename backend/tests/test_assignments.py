@@ -237,7 +237,7 @@ def test_assignment_submission_and_progress_sync(client, db_session):
 
     # Student submits solution with mocked runner returning success
     def mock_run(language, source, input_data):
-        return "8\n", "", 0, False
+        return "8\n", "", 0, False, None
 
     sub_payload = {
         "problem_id": env["prob1"].id,

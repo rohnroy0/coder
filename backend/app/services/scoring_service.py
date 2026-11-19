@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.submission import Submission, SubmissionStatus
-from app.models.problem import Problem
+from app.models.problem import Problem, TestCase
 from app.models.assignment import Assignment
 from app.models.points import StudentPointsEvent, PointEventType
 from app.models.user import User
@@ -98,18 +98,25 @@ class ScoringService:
                 db.add(ev_accepted)
                 events_created.append(ev_accepted)
 
-                # Fast Execution Bonus
-                if submission.execution_time is not None and submission.execution_time <= settings.FAST_EXECUTION_THRESHOLD:
-                    ev_fast = StudentPointsEvent(
-                        student_id=student_id,
-                        classroom_id=classroom_id,
-                        submission_id=submission.id,
-                        event_type=PointEventType.FAST_BONUS,
-                        points=settings.POINTS_FAST_BONUS,
-                        description=f"Fast execution bonus ({round(submission.execution_time, 3)}s)"
-                    )
-                    db.add(ev_fast)
-                    events_created.append(ev_fast)
+                # Fast Execution Bonus. execution_time is the TOTAL measured
+                # in-container program runtime across all test cases, so the
+                # threshold is compared against the per-test average - a
+                # problem with more test cases must not be harder to earn the
+                # bonus on than one with fewer.
+                if submission.execution_time is not None:
+                    test_count = db.query(TestCase).filter(TestCase.problem_id == problem_id).count()
+                    avg_time = submission.execution_time / max(test_count, 1)
+                    if avg_time <= settings.FAST_EXECUTION_THRESHOLD:
+                        ev_fast = StudentPointsEvent(
+                            student_id=student_id,
+                            classroom_id=classroom_id,
+                            submission_id=submission.id,
+                            event_type=PointEventType.FAST_BONUS,
+                            points=settings.POINTS_FAST_BONUS,
+                            description=f"Fast execution bonus (avg {round(avg_time, 3)}s per test)"
+                        )
+                        db.add(ev_fast)
+                        events_created.append(ev_fast)
 
                 # First Attempt Quality Bonus
                 if attempt_number == 1:

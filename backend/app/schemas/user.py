@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 from pydantic import BaseModel, EmailStr, Field
 from app.models.user import UserRole
 
@@ -7,6 +8,8 @@ class UserRegister(BaseModel):
     email: EmailStr = Field(..., examples=["john@gmail.com"])
     password: str = Field(..., min_length=6, examples=["password"])
     role: UserRole = Field(..., examples=[UserRole.STUDENT])
+    # Required for TEACHER registration when TEACHER_SIGNUP_CODE is configured.
+    teacher_code: Optional[str] = Field(None, examples=[None])
 
 class UserLogin(BaseModel):
     email: EmailStr = Field(..., examples=["john@gmail.com"])

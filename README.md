@@ -84,8 +84,9 @@ docker build -t python-runner ./backend/docker/python_runner
 cd backend
 python -m venv venv && source venv/bin/activate   # win_venv + Activate.ps1 on Windows
 pip install -r requirements.txt
-alembic upgrade head
 cp .env.example .env   # fill in as needed
+alembic upgrade head   # fresh DB only; existing create_all DBs: alembic stamp head
+                       # (optional on SQLite - the app also creates tables at startup)
 uvicorn app.main:app --reload --port 8100
 
 # 3. Frontend (separate terminal)

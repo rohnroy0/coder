@@ -13,6 +13,12 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api"
     SECRET_KEY: str = DEFAULT_INSECURE_SECRET_KEY
     ALGORITHM: str = "HS256"
+
+    # When set, registering a TEACHER account requires this code; students are
+    # unaffected. Empty (the default) leaves teacher self-registration open,
+    # which is fine for local demos but not for a real deployment - main.py
+    # logs a warning at startup in that case.
+    TEACHER_SIGNUP_CODE: str = ""
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
 
     # Browser origins allowed to call the API directly. The Vite dev server proxies /api
@@ -41,7 +47,13 @@ class Settings(BaseSettings):
     POINTS_WRONG: int = -5
     POINTS_RUNTIME_ERROR: int = -5
     POINTS_TIMEOUT: int = -5
-    FAST_EXECUTION_THRESHOLD: float = 0.05
+    # Fast-bonus cutoff: average measured IN-CONTAINER program runtime per test
+    # case (seconds), compile phase excluded. The old 0.05 was compared against
+    # host-side Docker wall time (>= ~1s per test) and could never be met; 0.2
+    # is comfortably reachable by an efficient solution (a trivial Python run
+    # measures ~0.05-0.1s) while an inefficient one approaching the 5s limit
+    # never qualifies.
+    FAST_EXECUTION_THRESHOLD: float = 0.2
     MAX_PENALTY_EVENTS_PER_PROBLEM: int = 5
     STRENGTH_THRESHOLD_STRONG: float = 80.0
     STRENGTH_THRESHOLD_DEVELOPING: float = 50.0

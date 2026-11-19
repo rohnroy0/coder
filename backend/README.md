@@ -62,7 +62,7 @@ backend/
 │   │   ├── student_profile_service.py  # Teacher → student profile aggregation & authorization
 │   │   └── classroom_service.py
 │   └── dependencies/auth.py        # get_current_user / teacher / student
-├── alembic/versions/               # 5 migrations (problems → AI fields → AI feedback → points → assignments)
+├── alembic/versions/               # Single baseline migration (full schema)
 ├── docker/python_runner/Dockerfile # Sandbox image
 ├── tests/                          # pytest suite (one file per area)
 ├── run.ps1                         # Start backend on :8100 with win_venv + auto-reload
@@ -131,10 +131,26 @@ pip install -r requirements.txt
 
 ## Database Migrations (Alembic)
 
-Apply all database migrations:
+The migration history is a single baseline revision generated from the current
+models (the original incremental chain never created `users`/`classrooms` and
+could not be applied anywhere, so it was replaced).
+
+On a **fresh database**:
 ```bash
 alembic upgrade head
 ```
+
+On an **existing database** that was initialized by the app's startup
+`create_all()` (the default for anyone who just ran the server): the tables
+already exist, so mark the baseline as applied instead of running it:
+```bash
+alembic stamp head
+```
+
+After that, future schema changes can be added as normal incremental
+revisions (`alembic revision --autogenerate`). Note the app still runs
+`create_all()` at startup, so SQLite dev setups work with no Alembic step at
+all - migrations matter mainly for PostgreSQL deployments.
 
 ---
 

@@ -85,10 +85,10 @@ class TestAIGenerationAndVerification:
         # Mock run_code to simulate correct stdout
         def mock_runner(language, source_code, input_data, **kwargs):
             if input_data == "5":
-                return "15\n", "", 0, False
+                return "15\n", "", 0, False, None
             if input_data == "10":
-                return "55\n", "", 0, False
-            return "0\n", "", 0, False
+                return "55\n", "", 0, False, None
+            return "0\n", "", 0, False, None
 
         mock_run.side_effect = mock_runner
 
@@ -121,8 +121,8 @@ class TestAIGenerationAndVerification:
         def mock_runner(language, source_code, input_data, **kwargs):
             n = int(input_data)
             if n < 3:
-                return f"{n}\n", "", 0, False  # correct for test cases #1 and #2
-            return "wrong\n", "", 0, False  # wrong for #3 onward
+                return f"{n}\n", "", 0, False, None  # correct for test cases #1 and #2
+            return "wrong\n", "", 0, False, None  # wrong for #3 onward
 
         mock_run.side_effect = mock_runner
 
@@ -145,7 +145,7 @@ class TestAIGenerationAndVerification:
     @patch("app.services.question_validator.run_code")
     def test_reference_solution_failing_output_rejected(self, mock_run):
         # Mock runner returning wrong answer
-        mock_run.return_value = ("99999\n", "", 0, False)
+        mock_run.return_value = ("99999\n", "", 0, False, None)
 
         q = AIGeneratedQuestionSchema(
             title="Broken Problem",
@@ -168,7 +168,7 @@ class TestAIGenerationAndVerification:
     @patch("app.services.question_validator.run_code")
     def test_reference_solution_timeout_rejected(self, mock_run):
         # Mock runner timing out
-        mock_run.return_value = ("", "TimeoutExpired", -1, True)
+        mock_run.return_value = ("", "TimeoutExpired", -1, True, None)
 
         q = AIGeneratedQuestionSchema(
             title="Infinite Loop Problem",
@@ -191,7 +191,7 @@ class TestAIGenerationAndVerification:
     @patch("app.services.question_validator.run_code")
     def test_reference_solution_runtime_error_rejected(self, mock_run):
         # Mock runner producing runtime error
-        mock_run.return_value = ("", "ZeroDivisionError: division by zero", 1, False)
+        mock_run.return_value = ("", "ZeroDivisionError: division by zero", 1, False, None)
 
         q = AIGeneratedQuestionSchema(
             title="Division Error",
@@ -238,12 +238,12 @@ class TestAIGenerationAndVerification:
         """
         def mock_runner(language, source_code, input_data):
             if "print(" not in source_code:
-                return "", "", 0, False  # bare function: runs, but prints nothing
+                return "", "", 0, False, None  # bare function: runs, but prints nothing
             n = int(input_data.strip())
             result = 1
             for i in range(2, n + 1):
                 result *= i
-            return f"{result}\n", "", 0, False
+            return f"{result}\n", "", 0, False, None
 
         mock_run.side_effect = mock_runner
 
@@ -304,7 +304,7 @@ class TestAIGenerationAndVerification:
         """
         def mock_runner(language, source_code, input_data):
             n = int(input_data.strip())
-            return f"{n * 2}\n", "", 0, False
+            return f"{n * 2}\n", "", 0, False, None
         mock_run.side_effect = mock_runner
 
         GOOD_SOLUTION = "n = int(input())\\nprint(n * 2)"
@@ -355,7 +355,7 @@ class TestAIGenerationAndVerification:
         extras must not be Docker-verified or persisted."""
         def mock_runner(language, source_code, input_data):
             n = int(input_data.strip())
-            return f"{n * 2}\n", "", 0, False
+            return f"{n * 2}\n", "", 0, False, None
         mock_run.side_effect = mock_runner
 
         GOOD_SOLUTION = "n = int(input())\\nprint(n * 2)"

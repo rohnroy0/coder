@@ -226,7 +226,7 @@ class TestDeleteProblem:
         prob = self._create_problem(client, teacher_token)
         client.post(f"/api/problems/{prob['id']}/testcases",
                     json={"input": "5 10", "expected_output": "15"}, headers=auth_header(teacher_token))
-        with patch("app.services.submission_service.run_code", side_effect=lambda l, s, i: ("15\n", "", 0, False)):
+        with patch("app.services.submission_service.run_code", side_effect=lambda l, s, i: ("15\n", "", 0, False, None)):
             client.post("/api/submissions", json={
                 "problem_id": prob["id"], "language": "python", "source_code": "print(15)",
             }, headers=auth_header(student_token))

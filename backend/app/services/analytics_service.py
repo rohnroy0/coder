@@ -75,8 +75,15 @@ class AnalyticsService:
             StudentPointsEvent.student_id == student_id
         ).scalar() or 0
 
-        # AI Hints count
-        ai_hints_count = db.query(AIFeedback).filter(AIFeedback.student_id == student_id).count()
+        # AI Hints count - only hints the student asked for themselves. A
+        # teacher requesting feedback on a student's submission creates a row
+        # with requested_by=teacher, which must not inflate the student's
+        # hint-usage stats. Legacy rows (requested_by NULL, from before the
+        # column existed) are counted as student-requested, their usual case.
+        ai_hints_count = db.query(AIFeedback).filter(
+            AIFeedback.student_id == student_id,
+            (AIFeedback.requested_by == student_id) | (AIFeedback.requested_by.is_(None))
+        ).count()
 
         # Learning streak (consecutive days with at least one submission)
         streak = StreakService.compute_streak(db, student_id)

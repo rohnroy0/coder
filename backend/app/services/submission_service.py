@@ -48,7 +48,7 @@ class SubmissionService:
 
         results = []
         for tc in test_cases:
-            stdout, stderr, return_code, is_timeout = run_code(language, source_code, tc.input)
+            stdout, stderr, return_code, is_timeout, _runtime = run_code(language, source_code, tc.input)
 
             if is_timeout:
                 results.append(RunTestCaseResult(
@@ -104,9 +104,12 @@ class SubmissionService:
 
         for number, tc in enumerate(test_cases, start=1):
             start = time.monotonic()
-            stdout, stderr, return_code, is_timeout = run_code(language, source_code, tc.input)
+            stdout, stderr, return_code, is_timeout, runtime_seconds = run_code(language, source_code, tc.input)
             elapsed = time.monotonic() - start
-            total_time += elapsed
+            # Prefer the in-container measurement (program only, no Docker
+            # create/teardown overhead); host wall time is the fallback when
+            # the marker is missing (e.g. host-side timeout).
+            total_time += runtime_seconds if runtime_seconds is not None else elapsed
 
             if is_timeout:
                 return SubmissionStatus.TIME_LIMIT_EXCEEDED, total_time, number, None

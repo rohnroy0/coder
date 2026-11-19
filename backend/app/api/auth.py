@@ -1,15 +1,30 @@
+import secrets
+
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from app.core.config import settings
 from app.database.session import get_db
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.user import UserRegister, UserLogin, TokenResponse, UserResponse
 from app.core.security import get_password_hash, verify_password, create_access_token
 from app.dependencies.auth import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_211_CREATED if False else status.HTTP_201_CREATED)
+@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register(user_in: UserRegister, db: Session = Depends(get_db)):
+    # Teacher accounts see every student's work in their classrooms, so when a
+    # signup code is configured, becoming one requires it. compare_digest, not
+    # ==, to avoid leaking the code through response timing.
+    if user_in.role == UserRole.TEACHER and settings.TEACHER_SIGNUP_CODE:
+        supplied = user_in.teacher_code or ""
+        if not secrets.compare_digest(supplied, settings.TEACHER_SIGNUP_CODE):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="A valid teacher signup code is required to register a teacher account."
+            )
+
     # Validate unique email
     existing_user = db.query(User).filter(User.email == user_in.email.lower()).first()
     if existing_user:
@@ -17,7 +32,7 @@ def register(user_in: UserRegister, db: Session = Depends(get_db)):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email is already registered"
         )
-    
+
     hashed_pwd = get_password_hash(user_in.password)
     user = User(
         name=user_in.name,
@@ -26,7 +41,17 @@ def register(user_in: UserRegister, db: Session = Depends(get_db)):
         role=user_in.role
     )
     db.add(user)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # Two concurrent registrations of the same email both passed the check
+        # above; the unique constraint catches the loser - report it as the
+        # normal duplicate-email error instead of a 500.
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email is already registered"
+        )
     db.refresh(user)
     return user
 

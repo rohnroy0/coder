@@ -93,7 +93,7 @@ class QuestionValidator:
                 all_test_cases
             ))
 
-        for index, (tc, (stdout, stderr, return_code, is_timeout)) in enumerate(zip(all_test_cases, run_results)):
+        for index, (tc, (stdout, stderr, return_code, is_timeout, _runtime)) in enumerate(zip(all_test_cases, run_results)):
             if is_timeout:
                 error_msg = f"Reference solution timed out (exceeded 5s limit) on test case #{index + 1}."
                 logger.warning(f"[QuestionValidator] {error_msg}")

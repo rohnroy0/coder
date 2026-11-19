@@ -29,11 +29,11 @@ RUNNER_PATH = "app.services.submission_service.run_code"
 
 
 def mock_correct(language, source_code, input_data):
-    return "15\n", "", 0, False
+    return "15\n", "", 0, False, None
 
 
 def mock_wrong(language, source_code, input_data):
-    return "999\n", "", 0, False
+    return "999\n", "", 0, False, None
 
 
 class TestLevelService:
@@ -159,7 +159,7 @@ class TestBadgeAwarding:
 
     def test_speed_demon_badge_awarded_with_fast_bonus(self, client, student_token, problem, db_session):
         def fast_correct(language, source_code, input_data):
-            return "15\n", "", 0, False
+            return "15\n", "", 0, False, None
 
         with patch(RUNNER_PATH, side_effect=fast_correct):
             resp = client.post("/api/submissions", json={

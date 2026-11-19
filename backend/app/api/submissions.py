@@ -210,7 +210,8 @@ def get_ai_tutor_feedback(
             problem=problem,
             student_id=submission.user_id,
             hint_level=request.hint_level,
-            attempt_number=attempt_number
+            attempt_number=attempt_number,
+            requested_by=current_user.id
         )
     except AIServiceUnavailableException as e:
         raise HTTPException(

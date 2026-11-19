@@ -174,9 +174,15 @@ class StudentProfileService:
         problems = {p.id: p for p in db.query(Problem).filter(Problem.id.in_(problem_ids))} if problem_ids else {}
         assignment_titles = {a.id: a.title for a in db.query(Assignment).filter(Assignment.classroom_id == classroom.id)}
 
+        # Only hints the student requested themselves: this profile reports the
+        # student's OWN hint usage, and rows created by a teacher requesting
+        # feedback (requested_by=teacher) would inflate it. Legacy NULL rows
+        # count as student-requested.
         feedbacks = (
             db.query(AIFeedback).filter(
-                AIFeedback.student_id == sid, AIFeedback.submission_id.in_(scoped_submission_ids)
+                AIFeedback.student_id == sid,
+                AIFeedback.submission_id.in_(scoped_submission_ids),
+                (AIFeedback.requested_by == sid) | (AIFeedback.requested_by.is_(None))
             ).order_by(AIFeedback.created_at.asc()).all()
             if scoped_submission_ids else []
         )

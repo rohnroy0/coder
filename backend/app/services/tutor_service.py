@@ -170,7 +170,8 @@ class TutorService:
         problem: Problem,
         student_id: int,
         hint_level: int = 1,
-        attempt_number: int = 1
+        attempt_number: int = 1,
+        requested_by: Optional[int] = None
     ) -> AIFeedbackResponse:
         """
         Main AI Tutor Feedback Generation Pipeline for a real, persisted Submission.
@@ -190,6 +191,7 @@ class TutorService:
         db_feedback = AIFeedback(
             submission_id=submission.id,
             student_id=student_id,
+            requested_by=requested_by if requested_by is not None else student_id,
             hint_level=hint_level,
             summary=parsed_feedback.summary,
             error_type=parsed_feedback.error_type,

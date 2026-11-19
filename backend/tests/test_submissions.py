@@ -73,19 +73,19 @@ def mock_correct(language, source_code, input_data):
     # Simulate running the code: compute the sum correctly
     parts = input_data.strip().split()
     result = sum(int(p) for p in parts)
-    return str(result) + "\n", "", 0, False
+    return str(result) + "\n", "", 0, False, None
 
 
 def mock_wrong(language, source_code, input_data):
-    return "999\n", "", 0, False
+    return "999\n", "", 0, False, None
 
 
 def mock_runtime_error(language, source_code, input_data):
-    return "", "ValueError: boom\n", 1, False
+    return "", "ValueError: boom\n", 1, False, None
 
 
 def mock_timeout(language, source_code, input_data):
-    return "", "", -1, True
+    return "", "", -1, True, None
 
 
 # ─── Tests ────────────────────────────────────────────────────────────────────
@@ -373,7 +373,7 @@ class TestRunCode:
                 headers=auth_header(teacher_token),
             )
 
-        with patch(RUNNER_PATH, side_effect=lambda language, source, input_data: (input_data, "", 0, False)):
+        with patch(RUNNER_PATH, side_effect=lambda language, source, input_data: (input_data, "", 0, False, None)):
             resp = client.post(
                 "/api/submissions/run",
                 json={"problem_id": problem_id, "language": "python", "source_code": "pass"},

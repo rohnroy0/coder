@@ -12,6 +12,7 @@ export const RegisterPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState(defaultRole);
+  const [teacherCode, setTeacherCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -26,7 +27,7 @@ export const RegisterPage = () => {
     setError('');
 
     try {
-      const user = await register(name.trim(), email.trim(), password, role);
+      const user = await register(name.trim(), email.trim(), password, role, teacherCode.trim() || null);
       if (user.role === 'TEACHER') {
         navigate('/teacher');
       } else {
@@ -146,6 +147,27 @@ export const RegisterPage = () => {
                 />
               </div>
             </div>
+
+            {role === 'TEACHER' && (
+              <div>
+                <label htmlFor="teacherCode" className="block text-sm font-medium text-slate-700">
+                  Teacher Signup Code
+                </label>
+                <div className="mt-1">
+                  <input
+                    id="teacherCode"
+                    type="text"
+                    value={teacherCode}
+                    onChange={(e) => setTeacherCode(e.target.value)}
+                    placeholder="Provided by your institution"
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm text-slate-900 placeholder:text-slate-400"
+                  />
+                </div>
+                <p className="mt-1 text-[11px] text-slate-400">
+                  Leave blank if your deployment doesn't require one.
+                </p>
+              </div>
+            )}
 
             <div>
               <button

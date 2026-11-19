@@ -34,9 +34,9 @@ WRONG_CODE = "print(0)"
 
 def mock_correct(language, source_code, input_data):
     if source_code == WRONG_CODE:
-        return "0\n", "", 0, False
+        return "0\n", "", 0, False, None
     a, b = map(int, input_data.split())
-    return f"{a + b}\n", "", 0, False
+    return f"{a + b}\n", "", 0, False, None
 
 
 @pytest.fixture

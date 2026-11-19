@@ -37,8 +37,8 @@ def auth(token: str) -> dict:
 def fake_runner(language, source_code, input_data):
     # Correct code prints the hidden expected output; anything else prints a wrong answer.
     if source_code == CORRECT_CODE:
-        return HIDDEN_EXPECTED + "\n", "", 0, False
-    return "0\n", "", 0, False
+        return HIDDEN_EXPECTED + "\n", "", 0, False, None
+    return "0\n", "", 0, False, None
 
 
 @pytest.fixture
@@ -284,7 +284,7 @@ class TestCrossClassroomScoping:
 
         def correct(language, source_code, input_data):
             a, b = map(int, input_data.split())
-            return f"{a + b}\n", "", 0, False
+            return f"{a + b}\n", "", 0, False, None
 
         with patch(RUNNER_PATH, side_effect=correct):
             sub_a = client.post("/api/submissions", json={

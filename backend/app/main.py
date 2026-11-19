@@ -23,6 +23,23 @@ from app.api.learning import router as learning_router
 
 logger = logging.getLogger(__name__)
 
+
+def _ensure_column(engine_, table: str, column: str, ddl_type: str) -> None:
+    """Add a column to an existing table if it's missing (lightweight startup
+    migration for deployments created before the column existed). No-op when
+    the table doesn't exist yet or the column is already present."""
+    from sqlalchemy import inspect, text
+    inspector = inspect(engine_)
+    if table not in inspector.get_table_names():
+        return
+    existing = {col["name"] for col in inspector.get_columns(table)}
+    if column in existing:
+        return
+    with engine_.begin() as conn:
+        conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {ddl_type}"))
+    logger.info("Added missing column %s.%s to existing database", table, column)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     if settings.SECRET_KEY == DEFAULT_INSECURE_SECRET_KEY:
@@ -31,9 +48,19 @@ async def lifespan(app: FastAPI):
             "read the repository can forge login tokens for any user. Set a unique "
             "SECRET_KEY in backend/.env before exposing this server to a network."
         )
+    if not settings.TEACHER_SIGNUP_CODE:
+        logger.warning(
+            "TEACHER_SIGNUP_CODE is not set: anyone can self-register a TEACHER "
+            "account. Set it in backend/.env for any non-local deployment."
+        )
 
     # Auto-create tables on startup (works with PostgreSQL & SQLite)
     Base.metadata.create_all(bind=engine)
+
+    # create_all only creates MISSING tables - it never alters existing ones,
+    # so columns added to a model after a deployment's DB was first created
+    # must be patched in here or every query on that table breaks.
+    _ensure_column(engine, "ai_feedback", "requested_by", "INTEGER")
 
     # Seed the built-in self-paced learning curriculum (no-op once it exists)
     db = SessionLocal()
