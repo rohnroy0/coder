@@ -1,0 +1,23 @@
+[Unit]
+Description=Coder backend (FastAPI)
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+User=coder
+Group=coder
+WorkingDirectory=__APP_DIR__/backend
+# --workers 1 is deliberate: scoring uses an in-process lock to prevent
+# double point awards, and the default DB is a single SQLite file. Scale by
+# moving to PostgreSQL first, not by adding workers.
+ExecStart=__APP_DIR__/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8100 --workers 1 --proxy-headers
+Restart=always
+RestartSec=3
+# Hardening (the service still needs the docker socket via group membership)
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

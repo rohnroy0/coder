@@ -21,6 +21,12 @@ All code execution runs sandboxed in Docker — nothing submitted by a student e
 
 ---
 
+## Production Deployment
+
+A complete, one-script deployment to a **free Oracle Cloud ARM VM** (HTTPS via
+Caddy, systemd-managed backend, Docker sandbox, Groq-hosted AI) lives in
+[`deploy/DEPLOY.md`](deploy/DEPLOY.md).
+
 ## Tech Stack
 
 **Backend:** FastAPI, SQLAlchemy 2.0, Alembic, Pydantic v2, JWT (PyJWT + Passlib), SQLite (dev) / PostgreSQL-ready, pytest.

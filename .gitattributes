@@ -1,0 +1,6 @@
+# Files executed on Linux servers must keep LF endings even when the repo
+# is checked out on Windows (CRLF breaks bash shebangs and systemd units).
+*.sh text eol=lf
+deploy/Caddyfile text eol=lf
+deploy/*.service text eol=lf
+deploy/env.production.example text eol=lf

@@ -1,0 +1,19 @@
+# Caddy reverse proxy for Coder.
+# __DOMAIN__ is substituted by setup-server.sh; Caddy then obtains and renews
+# a Let's Encrypt certificate for it automatically.
+__DOMAIN__ {
+	encode gzip
+
+	# Backend API (FastAPI on localhost only)
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8100
+	}
+
+	# React SPA - serve the built frontend, falling back to index.html for
+	# client-side routes like /student/problems/3/code.
+	handle {
+		root * __APP_DIR__/frontend/dist
+		try_files {path} /index.html
+		file_server
+	}
+}
