@@ -61,16 +61,16 @@ export const LandingPage = () => {
       </header>
 
       {/* Hero */}
-      <section className="max-w-6xl mx-auto px-6 pt-20 pb-10 sm:pt-28 text-center w-full">
-        <div className="flex items-center justify-center gap-4 mb-10">
-          <span className="h-px w-10 bg-gold-500/60" />
-          <span className="text-[11px] font-semibold tracking-[0.22em] uppercase text-slate-500">
+      <section className="max-w-6xl mx-auto px-5 sm:px-6 pt-14 pb-10 sm:pt-28 text-center w-full">
+        <div className="flex items-center justify-center gap-4 mb-8 sm:mb-10">
+          <span className="hidden sm:block h-px w-10 bg-gold-500/60" />
+          <span className="text-[10px] sm:text-[11px] font-semibold tracking-[0.18em] sm:tracking-[0.22em] uppercase text-slate-500">
             A coding classroom for modern campuses
           </span>
-          <span className="h-px w-10 bg-gold-500/60" />
+          <span className="hidden sm:block h-px w-10 bg-gold-500/60" />
         </div>
 
-        <h1 className="font-display text-5xl sm:text-7xl font-semibold text-slate-900 tracking-tight leading-[1.04] max-w-4xl mx-auto">
+        <h1 className="font-display text-[2.6rem] sm:text-7xl font-semibold text-slate-900 tracking-tight leading-[1.06] sm:leading-[1.04] max-w-4xl mx-auto">
           Where rigorous code meets
           <span className="block italic text-purple-700">thoughtful teaching.</span>
         </h1>
@@ -125,7 +125,7 @@ export const LandingPage = () => {
           </div>
 
           {/* Verdict chip */}
-          <div className="absolute -bottom-6 left-6 sm:left-10 flex items-center gap-2.5 bg-white rounded-xl shadow-lg shadow-slate-900/10 ring-1 ring-slate-200 px-4 py-3">
+          <div className="absolute -bottom-6 left-4 sm:left-10 flex items-center gap-2.5 bg-white rounded-xl shadow-lg shadow-slate-900/10 ring-1 ring-slate-200 px-4 py-3">
             <CheckCircle2 className="w-5 h-5 text-emerald-600" />
             <div>
               <div className="text-[13px] font-semibold text-slate-900 leading-none">Accepted</div>

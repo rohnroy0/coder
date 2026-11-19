@@ -1,9 +1,9 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { GraduationCap, LogOut, User as UserIcon } from 'lucide-react';
+import { GraduationCap, LogOut, Menu, User as UserIcon } from 'lucide-react';
 
-export const Navbar = () => {
+export const Navbar = ({ onMenuToggle }) => {
   const { user, logout, isTeacher } = useAuth();
   const navigate = useNavigate();
 
@@ -20,7 +20,16 @@ export const Navbar = () => {
       <div className={`h-0.5 w-full ${isTeacher ? 'bg-purple-600' : 'bg-indigo-700'}`} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
-          <div className="flex items-center">
+          <div className="flex items-center gap-1.5">
+            {onMenuToggle && (
+              <button
+                onClick={onMenuToggle}
+                className="lg:hidden p-2 -ml-2 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                aria-label="Open menu"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+            )}
             <Link to={homePath} className="flex items-center gap-2.5 group">
               <div className="w-9 h-9 rounded-lg bg-indigo-700 flex items-center justify-center shadow-sm ring-1 ring-indigo-900/40 group-hover:bg-indigo-800 transition-colors">
                 <GraduationCap className="w-5 h-5 text-gold-400" />
@@ -30,9 +39,9 @@ export const Navbar = () => {
           </div>
 
           {user && (
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               <span
-                className={`px-2.5 py-1 text-[11px] font-bold tracking-wider rounded-full border ${
+                className={`hidden sm:inline-block px-2.5 py-1 text-[11px] font-bold tracking-wider rounded-full border ${
                   isTeacher
                     ? 'bg-purple-50 text-purple-700 border-purple-200'
                     : 'bg-indigo-50 text-indigo-700 border-indigo-200'
