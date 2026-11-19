@@ -51,7 +51,9 @@ BADGE_CATALOG: List[Dict[str, Any]] = [
         "code": "SPEED_DEMON", "name": "Speed Demon", "icon": "⚡",
         "description": "Earn a fast-execution bonus on a submission.",
         "check": lambda s: s["fast_bonus_count"] >= 1,
-        "hint": lambda s: "Get a solution running in ≤ 0.05s",
+        # Threshold-agnostic wording: the actual cutoff lives in
+        # settings.FAST_EXECUTION_THRESHOLD and has changed before.
+        "hint": lambda s: "Solve a problem with a fast average runtime per test",
     },
     {
         "code": "CLEAN_CODER", "name": "Clean Coder", "icon": "✨",
