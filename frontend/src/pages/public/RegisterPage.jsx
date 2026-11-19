@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import ErrorMessage from '../../components/common/ErrorMessage';
-import { Code2, UserPlus, Loader2, GraduationCap, UserCheck } from 'lucide-react';
+import { UserPlus, Loader2, GraduationCap, UserCheck } from 'lucide-react';
 
 export const RegisterPage = () => {
   const [searchParams] = useSearchParams();
@@ -45,17 +45,18 @@ export const RegisterPage = () => {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <Link to="/" className="inline-flex items-center space-x-2 text-indigo-600 font-bold text-2xl">
-          <div className="p-2.5 bg-indigo-50 rounded-xl">
-            <Code2 className="w-8 h-8 text-indigo-600" />
+        <Link to="/" className="inline-flex items-center gap-2.5">
+          <div className="w-11 h-11 rounded-xl bg-indigo-700 flex items-center justify-center shadow-md ring-1 ring-indigo-900/40">
+            <GraduationCap className="w-6 h-6 text-gold-400" />
           </div>
-          <span className="text-slate-900 tracking-tight">Coder</span>
+          <span className="font-display font-semibold text-3xl text-slate-900">Coder</span>
         </Link>
-        <h2 className="mt-6 text-2xl font-bold tracking-tight text-slate-900">Create your account</h2>
-        <p className="mt-2 text-xs text-slate-500">
+        <h2 className="mt-7 text-3xl font-semibold tracking-tight text-slate-900">Join the campus</h2>
+        <div className="mx-auto mt-4 h-px w-16 bg-gold-500/70" />
+        <p className="mt-4 text-sm text-slate-500">
           Already registered?{' '}
-          <Link to="/login" className="font-semibold text-indigo-600 hover:text-indigo-500">
-            Sign in to existing account
+          <Link to="/login" className="font-semibold text-indigo-700 hover:text-indigo-600 underline underline-offset-2 decoration-gold-500/50">
+            Sign in to your account
           </Link>
         </p>
       </div>
