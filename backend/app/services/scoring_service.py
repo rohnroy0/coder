@@ -51,13 +51,31 @@ class ScoringService:
         # Serialize concurrent scoring for the same student across processes.
         db.query(User).filter(User.id == student_id).with_for_update().first()
 
-        # The classroom this submission counts toward, if any - derived from the
-        # assignment it was submitted under, not an arbitrary classroom the student
-        # happens to belong to (a student can be enrolled in several classrooms).
-        classroom_id = None
+        # The classrooms this submission counts toward: the classroom of every
+        # OPEN assignment (in the student's classrooms) that contains this
+        # problem - the same rule assignment-progress sync uses. Deriving this
+        # only from submission.assignment_id made the gradebook and leaderboard
+        # disagree: a student who solved an assignment problem from the general
+        # problem browser was marked COMPLETED in the teacher's gradebook but
+        # earned no classroom points, so the leaderboard showed 0. No open
+        # assignment -> practice (classroom None). The per-classroom
+        # already_solved dedupe below still guarantees at most one ACCEPTED
+        # award per (problem, classroom).
+        from app.services.assignment_service import AssignmentService
+        relevant_assignment_ids = AssignmentService.find_student_assignments_for_problem(
+            db, student_id, problem_id, open_only=True
+        )
         if submission.assignment_id:
-            assignment = db.query(Assignment).filter(Assignment.id == submission.assignment_id).first()
-            classroom_id = assignment.classroom_id if assignment else None
+            # Validated at submission time: enrolled, problem in assignment, open.
+            relevant_assignment_ids.add(submission.assignment_id)
+        if relevant_assignment_ids:
+            target_classroom_ids = sorted({
+                row[0] for row in db.query(Assignment.classroom_id).filter(
+                    Assignment.id.in_(relevant_assignment_ids)
+                )
+            })
+        else:
+            target_classroom_ids = [None]
 
         # Calculate student's total attempt count on this problem up to this submission
         attempt_number = db.query(Submission).filter(
@@ -66,6 +84,28 @@ class ScoringService:
             Submission.created_at <= submission.created_at
         ).count()
 
+        events_created: List[StudentPointsEvent] = []
+        for classroom_id in target_classroom_ids:
+            events_created.extend(ScoringService._score_for_classroom(
+                db, submission, problem, classroom_id, attempt_number
+            ))
+
+        db.commit()
+        return events_created
+
+    @staticmethod
+    def _score_for_classroom(
+        db: Session,
+        submission: Submission,
+        problem: Problem,
+        classroom_id: Optional[int],
+        attempt_number: int
+    ) -> List[StudentPointsEvent]:
+        """Award/penalize this submission within ONE classroom scope (or
+        practice when classroom_id is None). Adds events to the session;
+        the caller commits."""
+        student_id = submission.user_id
+        problem_id = problem.id
         events_created: List[StudentPointsEvent] = []
 
         if submission.status == SubmissionStatus.ACCEPTED:
@@ -176,5 +216,4 @@ class ScoringService:
                 db.add(ev_pen)
                 events_created.append(ev_pen)
 
-        db.commit()
         return events_created
