@@ -47,6 +47,16 @@ export const AIGenerateQuestionsPage = () => {
   // into state purely so the UI re-renders once it's created.
   const batchAssignment = useRef({ id: null, problems: [] });
 
+  // Fake-progress status timers for the current generation run; tracked so a
+  // failed run's timers can't fire into a NEXT run (or after unmount) and
+  // overwrite its status text out of order.
+  const statusTimers = useRef([]);
+  const clearStatusTimers = () => {
+    statusTimers.current.forEach(clearTimeout);
+    statusTimers.current = [];
+  };
+  useEffect(() => clearStatusTimers, []);
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -82,8 +92,11 @@ export const AIGenerateQuestionsPage = () => {
     setStatusStep('Contacting Ollama LLM engine & generating questions...');
 
     try {
-      setTimeout(() => setStatusStep('Verifying reference solutions in isolated Docker containers...'), 3000);
-      setTimeout(() => setStatusStep('Running test cases & checking output consistency...'), 6000);
+      clearStatusTimers();
+      statusTimers.current.push(
+        setTimeout(() => setStatusStep('Verifying reference solutions in isolated Docker containers...'), 3000),
+        setTimeout(() => setStatusStep('Running test cases & checking output consistency...'), 6000)
+      );
 
       const res = await problemsApi.generateAIProblems({
         language,
@@ -98,6 +111,7 @@ export const AIGenerateQuestionsPage = () => {
       const detail = err.response?.data?.detail || 'AI problem generation failed. Please try again.';
       setError(detail);
     } finally {
+      clearStatusTimers();
       setLoading(false);
       setStatusStep('');
     }
@@ -117,28 +131,36 @@ export const AIGenerateQuestionsPage = () => {
 
     // Attach the now-VERIFIED problem to this batch's classroom assignment,
     // since that's what actually makes it visible to that classroom's students.
-    try {
-      const batch = batchAssignment.current;
-      const newProblems = [...batch.problems, { problem_id: id, points: 100, order: batch.problems.length }];
+    //
+    // Serialized through batch.queue: two quick "Save & Activate" clicks run two
+    // concurrent handleConfirms, and without the queue both would observe
+    // batch.id === null across the awaits, each create its own assignment, and
+    // the loser's problem list would overwrite the winner's.
+    const batch = batchAssignment.current;
+    batch.queue = (batch.queue || Promise.resolve()).then(async () => {
+      try {
+        const newProblems = [...batch.problems, { problem_id: id, points: 100, order: batch.problems.length }];
 
-      if (batch.id) {
-        await assignmentsApi.updateAssignment(batch.id, { problems: newProblems });
-      } else {
-        const topicLabel = topic.trim();
-        const created = await assignmentsApi.createAssignment({
-          classroom_id: Number(classroomId),
-          title: `AI Generated - ${topicLabel} (${new Date().toLocaleDateString()})`,
-          description: `Auto-created from the AI Problem Generator for topic "${topicLabel}".`,
-          problems: newProblems,
-        });
-        batch.id = created.id;
-        setBatchAssignmentId(created.id);
+        if (batch.id) {
+          await assignmentsApi.updateAssignment(batch.id, { problems: newProblems });
+        } else {
+          const topicLabel = topic.trim();
+          const created = await assignmentsApi.createAssignment({
+            classroom_id: Number(classroomId),
+            title: `AI Generated - ${topicLabel} (${new Date().toLocaleDateString()})`,
+            description: `Auto-created from the AI Problem Generator for topic "${topicLabel}".`,
+            problems: newProblems,
+          });
+          batch.id = created.id;
+          setBatchAssignmentId(created.id);
+        }
+        batch.problems = newProblems;
+      } catch (err) {
+        console.error('Failed to attach problem to classroom assignment:', err);
+        setAttachErrorIds((prev) => new Set(prev).add(id));
       }
-      batch.problems = newProblems;
-    } catch (err) {
-      console.error('Failed to attach problem to classroom assignment:', err);
-      setAttachErrorIds((prev) => new Set(prev).add(id));
-    }
+    });
+    await batch.queue;
   };
 
   const handlePublishBatch = async () => {

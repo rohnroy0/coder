@@ -1,4 +1,5 @@
 import logging
+import threading
 from typing import List, Optional
 from sqlalchemy.orm import Session
 
@@ -7,8 +8,17 @@ from app.models.submission import Submission, SubmissionStatus
 from app.models.problem import Problem
 from app.models.assignment import Assignment
 from app.models.points import StudentPointsEvent, PointEventType
+from app.models.user import User
 
 logger = logging.getLogger(__name__)
+
+# Scoring is check-then-insert (already_solved / penalty_count), and evaluation
+# takes seconds, so two concurrent submissions of the same solve would both pass
+# the check and both award points. This lock serializes the check+insert+commit
+# critical section within the process; the with_for_update() row lock below
+# covers multi-worker PostgreSQL deployments (it is a no-op on SQLite, where
+# this single-process lock is the effective guard).
+_scoring_lock = threading.Lock()
 
 class ScoringService:
     """
@@ -26,8 +36,20 @@ class ScoringService:
         """
         Evaluates submission judge result and records StudentPointsEvent entries.
         """
+        with _scoring_lock:
+            return ScoringService._process_submission_scoring_locked(db, submission, problem)
+
+    @staticmethod
+    def _process_submission_scoring_locked(
+        db: Session,
+        submission: Submission,
+        problem: Problem
+    ) -> List[StudentPointsEvent]:
         student_id = submission.user_id
         problem_id = problem.id
+
+        # Serialize concurrent scoring for the same student across processes.
+        db.query(User).filter(User.id == student_id).with_for_update().first()
 
         # The classroom this submission counts toward, if any - derived from the
         # assignment it was submitted under, not an arbitrary classroom the student

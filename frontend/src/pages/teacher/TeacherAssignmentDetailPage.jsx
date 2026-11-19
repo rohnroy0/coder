@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { fmtDateTime } from '../../utils/datetime';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { assignmentsApi } from '../../api/assignments';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -197,9 +198,9 @@ export const TeacherAssignmentDetailPage = () => {
               <Clock className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-slate-500 font-semibold block">Deadline (UTC)</span>
+              <span className="text-slate-500 font-semibold block">Deadline</span>
               <span className="text-sm font-bold text-slate-800 font-mono">
-                {assignment.due_at ? new Date(assignment.due_at).toLocaleString() : 'No Deadline Set'}
+                {assignment.due_at ? fmtDateTime(assignment.due_at) : 'No Deadline Set'}
               </span>
             </div>
           </div>
@@ -264,7 +265,7 @@ export const TeacherAssignmentDetailPage = () => {
                     <td className="px-4 py-3 font-extrabold text-indigo-600">{prog.score} pts</td>
                     <td className="px-4 py-3">{getProgressStatusBadge(prog.status)}</td>
                     <td className="px-4 py-3 text-slate-500 font-mono">
-                      {prog.last_activity_at ? new Date(prog.last_activity_at).toLocaleString() : 'No activity'}
+                      {prog.last_activity_at ? fmtDateTime(prog.last_activity_at) : 'No activity'}
                     </td>
                   </tr>
                 ))}

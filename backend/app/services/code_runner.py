@@ -62,63 +62,85 @@ def run_code(language: str, source_code: str, input_data: str) -> Tuple[str, str
     filename, run_command = LANGUAGE_COMMANDS[language]
 
     temp_dir = tempfile.mkdtemp()
-
-    with open(f"{temp_dir}/{filename}", "w", encoding="utf-8") as f:
-        f.write(source_code)
-
-    with open(f"{temp_dir}/input.txt", "w", encoding="utf-8") as f:
-        f.write(input_data)
-
     container_name = f"runner_{uuid.uuid4().hex}"
-    cmd = [
-        "docker", "run",
-        "--name", container_name,
-        "--label", "app=code-runner",
-        *([] if settings.RUNNER_KEEP_CONTAINERS else ["--rm"]),
-        # Without an init process the program runs as PID 1, which ignores SIGTERM
-        # and so would never be stopped by `timeout`.
-        "--init",
-        "--network", "none",
-        "--memory", "128m",
-        "--memory-swap", "128m",
-        "--cpus", "0.5",
-        "--pids-limit", "64",
-        "--read-only",
-        # exec: Docker's tmpfs mounts default to noexec, which would block running the
-        # compiled binary for the C path (the binary is written here since /app is read-only).
-        "--tmpfs", "/tmp:rw,exec,size=16m",
-        "--cap-drop", "ALL",
-        "--security-opt", "no-new-privileges",
-        "-e", "PYTHONDONTWRITEBYTECODE=1",
-        "-v", f"{temp_dir}:/app:ro",
-        "python-runner",
-        "sh", "-c", f"timeout {TIMEOUT_SECONDS} sh -c '{run_command}'",
-    ]
 
     try:
-        process = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=TIMEOUT_SECONDS + DOCKER_OVERHEAD_SECONDS
-        )
-    except FileNotFoundError:
-        raise SandboxUnavailableError("Docker executable not found.")
-    except subprocess.TimeoutExpired as e:
-        subprocess.run(["docker", "rm", "-f", container_name], capture_output=True)
-        stdout = e.stdout.decode("utf-8") if isinstance(e.stdout, bytes) else (e.stdout or "")
-        stderr = e.stderr.decode("utf-8") if isinstance(e.stderr, bytes) else (e.stderr or "")
-        return stdout, stderr, -1, True
+        with open(f"{temp_dir}/{filename}", "w", encoding="utf-8") as f:
+            f.write(source_code)
+
+        with open(f"{temp_dir}/input.txt", "w", encoding="utf-8") as f:
+            f.write(input_data)
+
+        cmd = [
+            "docker", "run",
+            "--name", container_name,
+            "--label", "app=code-runner",
+            *([] if settings.RUNNER_KEEP_CONTAINERS else ["--rm"]),
+            # Without an init process the program runs as PID 1, which ignores SIGTERM
+            # and so would never be stopped by `timeout`.
+            "--init",
+            "--network", "none",
+            "--memory", "128m",
+            "--memory-swap", "128m",
+            "--cpus", "0.5",
+            "--pids-limit", "64",
+            "--read-only",
+            # exec: Docker's tmpfs mounts default to noexec, which would block running the
+            # compiled binary for the C path (the binary is written here since /app is read-only).
+            "--tmpfs", "/tmp:rw,exec,size=16m",
+            "--cap-drop", "ALL",
+            "--security-opt", "no-new-privileges",
+            "-e", "PYTHONDONTWRITEBYTECODE=1",
+            "-v", f"{temp_dir}:/app:ro",
+            "python-runner",
+            "sh", "-c", f"timeout {TIMEOUT_SECONDS} sh -c '{run_command}'",
+        ]
+
+        try:
+            process = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=TIMEOUT_SECONDS + DOCKER_OVERHEAD_SECONDS
+            )
+        except FileNotFoundError:
+            raise SandboxUnavailableError("Docker executable not found.")
+        except subprocess.TimeoutExpired as e:
+            try:
+                subprocess.run(["docker", "rm", "-f", container_name], capture_output=True, timeout=30)
+            except subprocess.TimeoutExpired:
+                logger.error("[CodeRunner] Timed out force-removing container %s", container_name)
+            stdout = e.stdout.decode("utf-8") if isinstance(e.stdout, bytes) else (e.stdout or "")
+            stderr = e.stderr.decode("utf-8") if isinstance(e.stderr, bytes) else (e.stderr or "")
+            return stdout, stderr, -1, True
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
 
     stderr_lower = process.stderr.lower()
     if process.returncode != 0 and any(m in stderr_lower for m in DOCKER_UNAVAILABLE_MARKERS):
-        logger.error("[CodeRunner] Docker daemon unavailable or python-runner image missing.")
-        raise SandboxUnavailableError(
-            "Code execution sandbox is unavailable. Ensure Docker is running and the "
-            "'python-runner' image is built."
-        )
+        # The captured stderr INCLUDES the student program's own stderr, so a
+        # student printing e.g. "unable to find image" could spoof this branch
+        # (which deletes their judged submission). Confirm with a probe that
+        # talks only to the Docker daemon before declaring the sandbox down.
+        if _sandbox_really_unavailable():
+            logger.error("[CodeRunner] Docker daemon unavailable or python-runner image missing.")
+            raise SandboxUnavailableError(
+                "Code execution sandbox is unavailable. Ensure Docker is running and the "
+                "'python-runner' image is built."
+            )
 
     is_timeout = process.returncode in TIMEOUT_EXIT_CODES
     return process.stdout, process.stderr, process.returncode, is_timeout
+
+
+def _sandbox_really_unavailable() -> bool:
+    """True when the Docker daemon is unreachable or the runner image is missing.
+    Output of this probe never contains student-controlled text."""
+    try:
+        probe = subprocess.run(
+            ["docker", "image", "inspect", "python-runner"],
+            capture_output=True, text=True, timeout=15
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return True
+    return probe.returncode != 0

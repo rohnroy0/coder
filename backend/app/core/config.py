@@ -4,10 +4,14 @@ try:
 except ImportError:
     from pydantic import BaseSettings
 
+# Dev-only fallback; main.py logs a security warning at startup when this
+# value is still in use. Always override SECRET_KEY in .env for real use.
+DEFAULT_INSECURE_SECRET_KEY = "super_secret_jwt_key_change_me_in_production_12345"
+
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Coder"
     API_V1_STR: str = "/api"
-    SECRET_KEY: str = "super_secret_jwt_key_change_me_in_production_12345"
+    SECRET_KEY: str = DEFAULT_INSECURE_SECRET_KEY
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
 

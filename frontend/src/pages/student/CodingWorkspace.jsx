@@ -86,6 +86,12 @@ export const CodingWorkspace = () => {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState('');
   const [solved, setSolved] = useState(false);
+  // Which problem the current editor `code` belongs to. Guards the draft-save
+  // effect when the route param changes without an unmount (back/forward
+  // between two workspaces): in that commit `id` is already the NEW problem
+  // while `code` is still the OLD problem's text, and saving would overwrite
+  // the new problem's stored draft before it is loaded.
+  const [codeProblemId, setCodeProblemId] = useState(null);
 
   const language = problem?.language || 'python';
 
@@ -99,6 +105,7 @@ export const CodingWorkspace = () => {
         const template = STARTER_TEMPLATES[data.language] || STARTER_TEMPLATES.python;
         const draft = loadDraft(user?.id, id);
         setCode(draft !== null && draft !== '' ? draft : template);
+        setCodeProblemId(id);
 
         try {
           const samples = await problemsApi.getSampleTestCases(id);
@@ -121,9 +128,9 @@ export const CodingWorkspace = () => {
   // Save on every edit so a refresh (or navigating away and back) restores
   // exactly what was in the editor, not the starter template.
   useEffect(() => {
-    if (loading) return;
+    if (loading || codeProblemId !== id) return;
     saveDraft(user?.id, id, code);
-  }, [code, id, user?.id, loading]);
+  }, [code, id, user?.id, loading, codeProblemId]);
 
   const handleRun = async () => {
     if (!code.trim()) {

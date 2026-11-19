@@ -58,16 +58,13 @@ if (Test-Docker) {
 }
 
 if (Test-Docker) {
-    $old = $ErrorActionPreference; $ErrorActionPreference = 'SilentlyContinue'
-    $image = docker images -q python-runner
-    $ErrorActionPreference = $old
-    if ($image) {
-        Ok 'python-runner image present'
-    } else {
-        Write-Host '    building python-runner image (first run only)...'
-        docker build -t python-runner (Join-Path $backend 'docker\python_runner')
-        Ok 'python-runner image built'
-    }
+    # Always build: the Docker layer cache makes this a no-op when the Dockerfile
+    # is unchanged, and it picks up Dockerfile changes (e.g. the gcc/g++ addition
+    # for C/C++ grading) that a mere "image exists" check would keep stale forever.
+    Write-Host '    building python-runner image (cached - fast when unchanged)...'
+    docker build -t python-runner (Join-Path $backend 'docker\python_runner')
+    if ($LASTEXITCODE -eq 0) { Ok 'python-runner image up to date' }
+    else { Warn 'python-runner image build failed; code submissions may not work.' }
 }
 
 # ─── 2. Ollama (AI Generator & AI Tutor) ──────────────────────────────────────

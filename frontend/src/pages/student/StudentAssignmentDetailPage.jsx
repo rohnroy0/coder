@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { fmtDateTime } from '../../utils/datetime';
 import { useParams, Link } from 'react-router-dom';
 import { assignmentsApi } from '../../api/assignments';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -118,7 +119,7 @@ export const StudentAssignmentDetailPage = () => {
             <div>
               <span className="text-slate-500 font-semibold block">Due Date</span>
               <span className="text-xs font-bold text-slate-800 font-mono">
-                {assignment.due_at ? new Date(assignment.due_at).toLocaleString() : 'No Deadline'}
+                {assignment.due_at ? fmtDateTime(assignment.due_at) : 'No Deadline'}
               </span>
             </div>
           </div>

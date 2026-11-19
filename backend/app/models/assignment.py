@@ -48,6 +48,11 @@ class AssignmentProblem(Base):
     points = Column(Integer, nullable=False, default=100)
     order = Column(Integer, nullable=False, default=0)
 
+    __table_args__ = (
+        # Duplicate rows double-count total_points and per-student progress.
+        UniqueConstraint("assignment_id", "problem_id", name="uq_assignment_problem"),
+    )
+
     # Relationships
     assignment = relationship("Assignment", back_populates="problems")
     problem = relationship("Problem", back_populates="assignment_associations")

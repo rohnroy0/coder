@@ -98,6 +98,9 @@ class LeaderboardService:
                 "accuracy": accuracy,
                 "avg_attempts": attempts_per_solved,
                 "avg_execution_time": avg_exec_time,
+                # Lets consumers tell "no data yet" (0 submissions) apart from
+                # a genuine 0% accuracy; used by the struggling-students filter.
+                "total_submissions": total_submissions,
             })
 
         # Sort according to deterministic ranking rules:

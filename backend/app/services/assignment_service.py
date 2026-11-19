@@ -1,4 +1,4 @@
-from app.core.time import utcnow
+from app.core.time import utcnow, to_naive_utc
 from datetime import datetime
 from typing import List, Optional
 from fastapi import HTTPException, status
@@ -84,8 +84,11 @@ class AssignmentService:
             title=schema.title,
             description=schema.description,
             status=AssignmentStatus.DRAFT,
-            start_at=schema.start_at,
-            due_at=schema.due_at,
+            # Normalize to naive UTC at the boundary: SQLite drops tzinfo on
+            # storage, so an un-converted "+05:30" due date would silently become
+            # the same wall-clock time in UTC, shifting the real deadline.
+            start_at=to_naive_utc(schema.start_at),
+            due_at=to_naive_utc(schema.due_at),
             total_points=0,
             created_at=utcnow(),
             updated_at=utcnow()
@@ -94,7 +97,14 @@ class AssignmentService:
         db.flush()
 
         total_pts = 0
+        seen_problem_ids = set()
         for p_item in schema.problems:
+            if p_item.problem_id in seen_problem_ids:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Problem {p_item.problem_id} is listed more than once in this assignment."
+                )
+            seen_problem_ids.add(p_item.problem_id)
             prob = db.query(Problem).filter(Problem.id == p_item.problem_id).first()
             if not prob:
                 raise HTTPException(
@@ -140,9 +150,9 @@ class AssignmentService:
         if schema.description is not None:
             assignment.description = schema.description
         if schema.start_at is not None:
-            assignment.start_at = schema.start_at
+            assignment.start_at = to_naive_utc(schema.start_at)
         if schema.due_at is not None:
-            assignment.due_at = schema.due_at
+            assignment.due_at = to_naive_utc(schema.due_at)
 
         if schema.status is not None and schema.status != assignment.status:
             if schema.status == AssignmentStatus.PUBLISHED and assignment.published_at is None:
@@ -153,7 +163,14 @@ class AssignmentService:
             # Delete old problems
             db.query(AssignmentProblem).filter(AssignmentProblem.assignment_id == assignment.id).delete()
             total_pts = 0
+            seen_problem_ids = set()
             for p_item in schema.problems:
+                if p_item.problem_id in seen_problem_ids:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Problem {p_item.problem_id} is listed more than once in this assignment."
+                    )
+                seen_problem_ids.add(p_item.problem_id)
                 prob = db.query(Problem).filter(Problem.id == p_item.problem_id).first()
                 if not prob:
                     raise HTTPException(
@@ -442,12 +459,18 @@ class AssignmentService:
         db.commit()
 
     @staticmethod
-    def find_student_assignments_for_problem(db: Session, student_id: int, problem_id: int) -> set:
+    def find_student_assignments_for_problem(
+        db: Session, student_id: int, problem_id: int, open_only: bool = False
+    ) -> set:
         """
         IDs of every non-draft assignment containing this problem, in a classroom
         the student belongs to. Used to retroactively sync progress on assignments
         a solved problem belongs to even when the submission that solved it wasn't
         made through that assignment's own link.
+
+        With open_only=True, assignments that are CLOSED, past their due date, or
+        not yet started are excluded - a post-deadline solve must not update a
+        closed assignment's gradebook.
         """
         classroom_ids = [
             row[0] for row in db.query(ClassroomMember.classroom_id).filter(
@@ -457,11 +480,14 @@ class AssignmentService:
         if not classroom_ids:
             return set()
 
-        rows = db.query(Assignment.id).join(
+        query = db.query(Assignment).join(
             AssignmentProblem, AssignmentProblem.assignment_id == Assignment.id
         ).filter(
             Assignment.classroom_id.in_(classroom_ids),
             Assignment.status != AssignmentStatus.DRAFT,
             AssignmentProblem.problem_id == problem_id
         )
-        return {row[0] for row in rows}
+        assignments = query.all()
+        if open_only:
+            assignments = [a for a in assignments if DeadlineService.is_assignment_open(a)]
+        return {a.id for a in assignments}

@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
@@ -12,6 +13,8 @@ from app.dependencies.auth import get_current_user, get_current_teacher
 from app.services.ai_service import AIService
 from app.services.ollama_provider import AIServiceUnavailableException
 from app.services.code_runner import SUPPORTED_LANGUAGES
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/problems",
@@ -66,10 +69,11 @@ def generate_ai_problems(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(e)
         )
-    except Exception as e:
+    except Exception:
+        logger.exception("AI problem generation failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An error occurred during AI generation: {str(e)}"
+            detail="An error occurred during AI generation."
         )
 
 @router.post("/{problem_id}/confirm", response_model=ProblemResponse)

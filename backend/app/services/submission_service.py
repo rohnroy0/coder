@@ -112,7 +112,15 @@ class SubmissionService:
                 return SubmissionStatus.TIME_LIMIT_EXCEEDED, total_time, number, None
 
             if return_code != 0:
-                return SubmissionStatus.RUNTIME_ERROR, total_time, number, SubmissionService._format_error(stderr)
+                # Only echo stderr for the sample (publicly visible) test cases.
+                # The student's program controls its own stderr, so echoing it for
+                # hidden tests lets code like `raise Exception(sys.stdin.read())`
+                # exfiltrate every hidden test input one submission at a time.
+                if number <= SAMPLE_TEST_CASE_LIMIT:
+                    error = SubmissionService._format_error(stderr)
+                else:
+                    error = "Runtime error on a hidden test case (details are hidden)."
+                return SubmissionStatus.RUNTIME_ERROR, total_time, number, error
 
             # Normalize output: strip trailing whitespace/newlines per line
             actual = "\n".join(line.rstrip() for line in stdout.strip().splitlines())
@@ -138,7 +146,10 @@ class SubmissionService:
         schema: SubmissionCreate
     ) -> Submission:
         problem = db.query(Problem).filter(Problem.id == schema.problem_id).first()
-        if not problem:
+        # Unverified (draft/preview/failed) problems are invisible to students
+        # everywhere else; accepting submissions against them would let a student
+        # farm points off a teacher's unpublished drafts by guessing IDs.
+        if not problem or problem.status != ProblemStatus.VERIFIED:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Problem not found"
@@ -155,7 +166,12 @@ class SubmissionService:
         # _evaluate_detailed's loop simply never runs and its correctness-rank
         # fallthrough silently reports ACCEPTED for any submission, including
         # empty code. Fail the request instead of fabricating a grade.
-        test_cases = db.query(TestCase).filter(TestCase.problem_id == problem.id).all()
+        test_cases = (
+            db.query(TestCase)
+            .filter(TestCase.problem_id == problem.id)
+            .order_by(TestCase.id)
+            .all()
+        )
         if not test_cases:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -163,13 +179,36 @@ class SubmissionService:
             )
 
         if schema.assignment_id:
-            from app.models.assignment import Assignment
+            from app.models.assignment import Assignment, AssignmentProblem
+            from app.models.classroom import ClassroomMember
             from app.services.deadline_service import DeadlineService
             assignment = db.query(Assignment).filter(Assignment.id == schema.assignment_id).first()
             if not assignment:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Assignment not found"
+                )
+            # assignment_id is client-supplied: without these two checks a student
+            # can attach the submission to any published assignment on the platform,
+            # earning per-classroom points again and injecting themselves into
+            # other teachers' progress dashboards.
+            is_member = db.query(ClassroomMember).filter(
+                ClassroomMember.classroom_id == assignment.classroom_id,
+                ClassroomMember.student_id == student.id
+            ).first() is not None
+            if not is_member:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You are not enrolled in this assignment's classroom."
+                )
+            problem_in_assignment = db.query(AssignmentProblem).filter(
+                AssignmentProblem.assignment_id == assignment.id,
+                AssignmentProblem.problem_id == problem.id
+            ).first() is not None
+            if not problem_in_assignment:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="This problem is not part of the given assignment."
                 )
             DeadlineService.check_submission_allowed(assignment)
 
@@ -213,11 +252,18 @@ class SubmissionService:
         # problems are shared/reusable across assignments, so solving one must
         # count everywhere it's assigned, not only when reached through that
         # specific assignment's link.
+        #
+        # Only assignments that are currently OPEN are synced. Syncing closed or
+        # overdue assignments would let a student bypass the deadline entirely:
+        # solve the problem from the general browser after the due date and the
+        # closed assignment's gradebook entry silently flips to COMPLETED.
         from app.services.assignment_service import AssignmentService
         assignment_ids_to_sync = AssignmentService.find_student_assignments_for_problem(
-            db, student.id, problem.id
+            db, student.id, problem.id, open_only=True
         )
         if schema.assignment_id:
+            # Already validated above: student is enrolled, problem belongs to
+            # it, and the deadline check passed.
             assignment_ids_to_sync.add(schema.assignment_id)
         for aid in assignment_ids_to_sync:
             AssignmentService.sync_student_progress_on_submission(

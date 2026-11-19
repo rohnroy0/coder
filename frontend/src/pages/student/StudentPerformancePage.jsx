@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { fmtDateTime } from '../../utils/datetime';
 import { analyticsApi } from '../../api/analytics';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
@@ -211,7 +212,7 @@ export const StudentPerformancePage = () => {
                       {pe.points >= 0 ? `+${pe.points}` : pe.points}
                     </td>
                     <td className="px-4 py-3 font-extrabold text-slate-900">{pe.total_points} pts</td>
-                    <td className="px-4 py-3 text-slate-500">{new Date(pe.created_at).toLocaleString()}</td>
+                    <td className="px-4 py-3 text-slate-500">{fmtDateTime(pe.created_at)}</td>
                   </tr>
                 ))}
               </tbody>

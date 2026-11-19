@@ -6,18 +6,23 @@ from app.core.config import settings
 from app.database.session import get_db
 from app.models.user import User, UserRole
 
-security_scheme = HTTPBearer()
+# auto_error=False: HTTPBearer's default raises 403 for a MISSING header, which
+# the frontend can't distinguish from "insufficient role" - a logged-out user
+# must get 401 so the 401-redirect-to-login path fires.
+security_scheme = HTTPBearer(auto_error=False)
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
     db: Session = Depends(get_db)
 ) -> User:
-    token = credentials.credentials
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    if credentials is None:
+        raise credentials_exception
+    token = credentials.credentials
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         user_id_str: str = payload.get("sub")

@@ -37,34 +37,22 @@ def get_student_analytics_by_id(
 ):
     """
     Returns performance analytics for a specific student.
-    - Students can ONLY access their own analytics.
-    - Teachers can ONLY access analytics for students in classrooms they manage.
+    Students can ONLY access their own analytics.
+
+    Teachers are refused here: this service aggregates the student's GLOBAL
+    activity (every classroom, plus private practice), so sharing a single
+    classroom with the student is not enough to see it - that would leak the
+    student's work inside other teachers' classrooms. Teachers get the
+    classroom-scoped view via the student-profile endpoints instead.
     """
-    if current_user.role == UserRole.STUDENT:
-        if current_user.id != student_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied: You are not authorized to view another student's analytics."
-            )
-    elif current_user.role == UserRole.TEACHER:
-        # Check if student is in any classroom owned by teacher
-        teacher_classroom_tuples = db.query(Classroom.id).filter(Classroom.teacher_id == current_user.id).all()
-        teacher_classroom_ids = [c[0] for c in teacher_classroom_tuples]
+    if current_user.role == UserRole.STUDENT and current_user.id == student_id:
+        return AnalyticsService.get_student_analytics(db, student_id)
 
-        is_student_in_classroom = False
-        if teacher_classroom_ids:
-            is_student_in_classroom = db.query(ClassroomMember).filter(
-                ClassroomMember.student_id == student_id,
-                ClassroomMember.classroom_id.in_(teacher_classroom_ids)
-            ).first() is not None
-
-        if not is_student_in_classroom:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied: Student is not enrolled in any of your classrooms."
-            )
-
-    return AnalyticsService.get_student_analytics(db, student_id)
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Access denied: Global student analytics are only available to the student themself. "
+               "Teachers can use the classroom student profile view instead."
+    )
 
 @router.get("/classroom/{classroom_id}", response_model=ClassroomAnalyticsResponse)
 def get_classroom_analytics(

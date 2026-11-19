@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { fmtDate } from '../../utils/datetime';
 import { Link } from 'react-router-dom';
 import { School, Copy, Check, Trash2, ArrowRight } from 'lucide-react';
 
@@ -27,7 +28,7 @@ export const ClassroomCard = ({ classroom, isTeacher = false, onDelete }) => {
             </div>
             <div>
               <h3 className="font-semibold text-slate-900 text-lg leading-snug">{classroom.name}</h3>
-              <p className="text-xs text-slate-500">Created {new Date(classroom.created_at).toLocaleDateString()}</p>
+              <p className="text-xs text-slate-500">Created {fmtDate(classroom.created_at)}</p>
             </div>
           </div>
           {isTeacher && onDelete && (

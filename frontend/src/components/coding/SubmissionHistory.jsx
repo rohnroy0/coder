@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { fmtDateTime } from '../../utils/datetime';
 import { History, Calendar, Clock, Code, X } from 'lucide-react';
 
 export const SubmissionHistory = ({ submissions = [], loading = false }) => {
@@ -59,7 +60,7 @@ export const SubmissionHistory = ({ submissions = [], loading = false }) => {
                     {sub.execution_time != null ? `${Number(sub.execution_time).toFixed(3)}s` : 'N/A'}
                   </td>
                   <td className="px-4 py-3.5 text-xs text-slate-500">
-                    {new Date(sub.created_at).toLocaleString()}
+                    {fmtDateTime(sub.created_at)}
                   </td>
                   <td className="px-4 py-3.5 text-right">
                     {sub.source_code && (
@@ -94,7 +95,7 @@ export const SubmissionHistory = ({ submissions = [], loading = false }) => {
             <div className="flex items-center space-x-3 text-xs text-slate-400 mb-4">
               <span>Language: {selectedSubmission.language}</span>
               <span>•</span>
-              <span>Submitted: {new Date(selectedSubmission.created_at).toLocaleString()}</span>
+              <span>Submitted: {fmtDateTime(selectedSubmission.created_at)}</span>
             </div>
 
             <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 overflow-x-auto max-h-96">

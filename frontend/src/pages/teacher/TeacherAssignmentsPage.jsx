@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { fmtDate } from '../../utils/datetime';
 import { Link } from 'react-router-dom';
 import { classroomsApi } from '../../api/classrooms';
 import { assignmentsApi } from '../../api/assignments';
@@ -62,17 +63,24 @@ export const TeacherAssignmentsPage = () => {
 
   useEffect(() => {
     if (!selectedClassroomId) return;
+    // `stale` guards against out-of-order responses: switching A -> B quickly
+    // can resolve B before A, and A's late response would then overwrite B's
+    // assignments under B's selection.
+    let stale = false;
     const fetchAssignments = async () => {
       try {
         setError('');
+        setAssignments([]);
         const list = await assignmentsApi.getClassroomAssignments(selectedClassroomId);
-        setAssignments(list);
+        if (!stale) setAssignments(list);
       } catch (err) {
+        if (stale) return;
         console.error('Failed to fetch assignments:', err);
         setError('Unable to load assignments for this classroom.');
       }
     };
     fetchAssignments();
+    return () => { stale = true; };
   }, [selectedClassroomId]);
 
   const toggleProblemSelection = (problemId) => {
@@ -248,7 +256,7 @@ export const TeacherAssignmentsPage = () => {
                         {assign.due_at && (
                           <span className="flex items-center space-x-1 font-mono text-slate-500">
                             <Clock className="w-3.5 h-3.5" />
-                            <span>Due: {new Date(assign.due_at).toLocaleDateString()}</span>
+                            <span>Due: {fmtDate(assign.due_at)}</span>
                           </span>
                         )}
                       </div>
@@ -323,7 +331,7 @@ export const TeacherAssignmentsPage = () => {
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center space-x-1">
                   <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Due Date & Time (UTC)</span>
+                  <span>Due Date & Time (your local time)</span>
                 </label>
                 <input
                   type="datetime-local"

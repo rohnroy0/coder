@@ -25,6 +25,39 @@ router = APIRouter(
 )
 
 
+def _authorize_submission_feedback_access(db: Session, current_user: User, submission: Submission):
+    """
+    Students may only touch feedback on their own submissions. Teachers may only
+    touch feedback for submissions on problems they created, or by students
+    enrolled in one of their classrooms - NOT arbitrary submissions platform-wide.
+    """
+    if current_user.role == UserRole.STUDENT:
+        if submission.user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: You can only access AI feedback for your own submissions."
+            )
+    elif current_user.role == UserRole.TEACHER:
+        problem = db.query(Problem).filter(Problem.id == submission.problem_id).first()
+        is_creator = problem and problem.created_by == current_user.id
+
+        teacher_classroom_tuples = db.query(Classroom.id).filter(Classroom.teacher_id == current_user.id).all()
+        teacher_classroom_ids = [c[0] for c in teacher_classroom_tuples]
+
+        is_student_in_classroom = False
+        if teacher_classroom_ids:
+            is_student_in_classroom = db.query(ClassroomMember).filter(
+                ClassroomMember.student_id == submission.user_id,
+                ClassroomMember.classroom_id.in_(teacher_classroom_ids)
+            ).first() is not None
+
+        if not is_creator and not is_student_in_classroom:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: You are not authorized to view feedback for this submission."
+            )
+
+
 @router.post("", response_model=SubmissionResponse, status_code=status.HTTP_201_CREATED)
 def submit_code(
     submission_in: SubmissionCreate,
@@ -107,10 +140,11 @@ def get_ai_tutor_feedback_for_run(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="AI Tutor is currently unavailable. Please try again later."
         )
-    except Exception as e:
+    except Exception:
+        logger.exception("AI feedback generation for run failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An error occurred while generating AI feedback: {str(e)}"
+            detail="An error occurred while generating AI feedback."
         )
 
 
@@ -146,34 +180,7 @@ def get_ai_tutor_feedback(
             detail="Submission not found"
         )
 
-    # Authorization Check
-    if current_user.role == UserRole.STUDENT:
-        if submission.user_id != current_user.id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied: You can only request AI feedback for your own submissions."
-            )
-    elif current_user.role == UserRole.TEACHER:
-        # Check if student is in teacher's classroom OR problem created by teacher
-        problem = db.query(Problem).filter(Problem.id == submission.problem_id).first()
-        is_creator = problem and problem.created_by == current_user.id
-        
-        # Check classroom enrollment
-        teacher_classroom_tuples = db.query(Classroom.id).filter(Classroom.teacher_id == current_user.id).all()
-        teacher_classroom_ids = [c[0] for c in teacher_classroom_tuples]
-        
-        is_student_in_classroom = False
-        if teacher_classroom_ids:
-            is_student_in_classroom = db.query(ClassroomMember).filter(
-                ClassroomMember.student_id == submission.user_id,
-                ClassroomMember.classroom_id.in_(teacher_classroom_ids)
-            ).first() is not None
-
-        if not is_creator and not is_student_in_classroom:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied: You are not authorized to view feedback for this submission."
-            )
+    _authorize_submission_feedback_access(db, current_user, submission)
 
     if submission.status == SubmissionStatus.ACCEPTED:
         raise HTTPException(
@@ -210,11 +217,11 @@ def get_ai_tutor_feedback(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="AI Tutor is currently unavailable. Please try again later."
         )
-    except Exception as e:
-        logger_msg = str(e)
+    except Exception:
+        logger.exception("AI feedback generation for submission %s failed", submission_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An error occurred while generating AI feedback: {logger_msg}"
+            detail="An error occurred while generating AI feedback."
         )
 
 
@@ -231,8 +238,7 @@ def get_submission_feedback_history(
     if not submission:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
 
-    if current_user.role == UserRole.STUDENT and submission.user_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied to another student's submission feedback")
+    _authorize_submission_feedback_access(db, current_user, submission)
 
     feedbacks = db.query(AIFeedback).filter(AIFeedback.submission_id == submission_id).order_by(AIFeedback.hint_level.asc()).all()
     

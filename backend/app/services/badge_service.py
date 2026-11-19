@@ -1,4 +1,5 @@
 from typing import Any, Dict, List
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.submission import Submission, SubmissionStatus
@@ -176,13 +177,22 @@ class BadgeService:
                 continue
             row = StudentBadge(student_id=student_id, badge_code=badge["code"])
             db.add(row)
-            db.flush()
+            try:
+                # Committed per badge: a rollback on a later badge's conflict
+                # must not silently discard an earlier badge flushed in the
+                # same transaction while still reporting it as earned.
+                db.commit()
+            except IntegrityError:
+                # A concurrent submission already awarded this badge between our
+                # already_earned read and this insert (uq_student_badge). Losing
+                # the race is fine - without this, the IntegrityError would
+                # surface as a 500 on a submission that otherwise succeeded.
+                db.rollback()
+                continue
             newly_awarded.append({
                 "code": badge["code"], "name": badge["name"],
                 "description": badge["description"], "icon": badge["icon"],
                 "earned_at": row.earned_at,
             })
 
-        if newly_awarded:
-            db.commit()
         return newly_awarded

@@ -2,7 +2,7 @@ from app.core.time import utcnow
 import enum
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Enum, Float
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from app.database.base import Base
 
 class ErrorCategory(str, enum.Enum):
@@ -31,6 +31,14 @@ class AIFeedback(Base):
     confidence = Column(Float, nullable=False, default=1.0)
     created_at = Column(DateTime, default=utcnow, nullable=False)
 
-    # Relationships
-    submission = relationship("Submission", backref="feedback_list")
-    student = relationship("User", backref="ai_feedbacks")
+    # Relationships. Without delete-orphan cascade here, ORM-deleting a
+    # Submission (e.g. cascading from a Problem delete) tries to NULL this
+    # NOT NULL FK instead of deleting the feedback row -> IntegrityError 500.
+    submission = relationship(
+        "Submission",
+        backref=backref("feedback_list", cascade="all, delete-orphan")
+    )
+    student = relationship(
+        "User",
+        backref=backref("ai_feedbacks", cascade="all, delete-orphan")
+    )

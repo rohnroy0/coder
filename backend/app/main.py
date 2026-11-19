@@ -1,9 +1,10 @@
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.core.config import settings
+from app.core.config import settings, DEFAULT_INSECURE_SECRET_KEY
 from app.services.code_runner import SandboxUnavailableError
 from app.core.seed_learning_curriculum import seed_learning_curriculum
 from app.database.base import Base
@@ -20,8 +21,17 @@ from app.api.assignments import router as assignments_router
 from app.api.badges import router as badges_router
 from app.api.learning import router as learning_router
 
+logger = logging.getLogger(__name__)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if settings.SECRET_KEY == DEFAULT_INSECURE_SECRET_KEY:
+        logger.warning(
+            "SECURITY: SECRET_KEY is the publicly committed default. Anyone who has "
+            "read the repository can forge login tokens for any user. Set a unique "
+            "SECRET_KEY in backend/.env before exposing this server to a network."
+        )
+
     # Auto-create tables on startup (works with PostgreSQL & SQLite)
     Base.metadata.create_all(bind=engine)
 

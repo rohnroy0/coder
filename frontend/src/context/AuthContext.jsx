@@ -20,8 +20,15 @@ export const AuthProvider = ({ children }) => {
           setUser(userData);
           localStorage.setItem('user', JSON.stringify(userData));
         } catch (error) {
-          console.error('Failed to validate session token:', error);
-          logout();
+          // Only an actual 401 means the token is bad. A network error or a
+          // 5xx (backend restarting, briefly unreachable) must NOT log the
+          // user out - keep the cached user and let the next request retry.
+          if (error.response && error.response.status === 401) {
+            console.error('Session token rejected, logging out:', error);
+            logout();
+          } else {
+            console.error('Could not validate session (keeping it):', error);
+          }
         }
       } else {
         setUser(null);

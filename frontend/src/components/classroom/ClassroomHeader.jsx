@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { fmtDate } from '../../utils/datetime';
 import { School, Copy, Check, Users, Calendar } from 'lucide-react';
 
 export const ClassroomHeader = ({
@@ -32,7 +33,7 @@ export const ClassroomHeader = ({
             <div className="flex items-center space-x-4 mt-3 text-xs text-slate-500">
               <span className="flex items-center space-x-1">
                 <Calendar className="w-3.5 h-3.5" />
-                <span>Created {new Date(classroom.created_at).toLocaleDateString()}</span>
+                <span>Created {fmtDate(classroom.created_at)}</span>
               </span>
               <span className="flex items-center space-x-1">
                 <Users className="w-3.5 h-3.5" />

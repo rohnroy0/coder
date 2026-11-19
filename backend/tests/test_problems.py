@@ -70,7 +70,9 @@ class TestCreateProblem:
 
     def test_unauthenticated_cannot_create_problem(self, client):
         resp = client.post("/api/problems", json=PROBLEM_PAYLOAD)
-        assert resp.status_code == 403, resp.text
+        # 401 (not authenticated), distinct from 403 (authenticated but wrong role),
+        # so the frontend's redirect-to-login-on-401 path fires for missing tokens.
+        assert resp.status_code == 401, resp.text
 
 
 class TestGetProblems:

@@ -270,9 +270,14 @@ class AnalyticsService:
                 "classification": AnalyticsService.classify_strength(t_acc)
             })
 
-        # Identify struggling students (accuracy < 50% or avg_attempts > 3.0 with at least 1 submission)
+        # Identify struggling students (accuracy < 50% or avg_attempts > 3.0).
+        # Students with zero submissions are excluded - their accuracy of 0.0 is
+        # "no data yet", not "struggling", and without the guard every freshly
+        # enrolled student lands on this list.
         struggling_students = [
-            e for e in leaderboard if e["accuracy"] < 50.0 or (e["avg_attempts"] > 3.0 and e["problems_solved"] > 0)
+            e for e in leaderboard
+            if e.get("total_submissions", 0) > 0
+            and (e["accuracy"] < 50.0 or (e["avg_attempts"] > 3.0 and e["problems_solved"] > 0))
         ]
 
         return {

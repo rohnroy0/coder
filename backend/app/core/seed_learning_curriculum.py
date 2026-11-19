@@ -25,6 +25,8 @@ from app.models.user import User, UserRole
 from app.models.problem import Problem, ProblemDifficulty, ProblemStatus, TestCase
 from app.models.submission import Submission
 from app.models.points import StudentPointsEvent
+from app.models.feedback import AIFeedback
+from app.models.assignment import AssignmentProblem
 from app.models.learning import LearningChapter, LearningChapterProblem
 
 logger = logging.getLogger(__name__)
@@ -561,9 +563,13 @@ def _wipe_system_curriculum(db: Session, system_teacher_id: int) -> None:
             row[0] for row in db.query(Submission.id).filter(Submission.problem_id.in_(problem_ids))
         ]
         if submission_ids:
+            db.query(AIFeedback).filter(AIFeedback.submission_id.in_(submission_ids)).delete(synchronize_session=False)
             db.query(StudentPointsEvent).filter(StudentPointsEvent.submission_id.in_(submission_ids)).delete(synchronize_session=False)
             db.query(Submission).filter(Submission.id.in_(submission_ids)).delete(synchronize_session=False)
         db.query(TestCase).filter(TestCase.problem_id.in_(problem_ids)).delete(synchronize_session=False)
+        # System problems are never meant to be used in assignments, but guard
+        # against dangling references all the same.
+        db.query(AssignmentProblem).filter(AssignmentProblem.problem_id.in_(problem_ids)).delete(synchronize_session=False)
 
     if chapter_ids:
         db.query(LearningChapterProblem).filter(LearningChapterProblem.chapter_id.in_(chapter_ids)).delete(synchronize_session=False)

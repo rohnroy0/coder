@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Sparkles, 
   Lightbulb, 
@@ -16,6 +16,17 @@ export const AITutorPanel = ({ submissionId, runContext, status }) => {
   const [hintLevel, setHintLevel] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // The panel instance survives across runs/submissions. Without this reset,
+  // feedback generated for the PREVIOUS version of the code keeps displaying
+  // against the new result, and the inflated hint level carries over.
+  // Scalar deps, not runContext itself: the parent passes a fresh object
+  // literal each render, so the object identity would reset on every render.
+  useEffect(() => {
+    setFeedback(null);
+    setHintLevel(1);
+    setError('');
+  }, [submissionId, runContext?.problemId, runContext?.language, runContext?.sourceCode]);
 
   // A correct solution needs no hint - the backend also enforces this, this
   // just avoids offering a button that would error if clicked.

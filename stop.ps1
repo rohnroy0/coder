@@ -11,10 +11,19 @@ Get-CimInstance Win32_Process |
     Where-Object { $_.CommandLine -match 'watchfiles' -and $_.CommandLine -match 'port 8100' } |
     ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 
-# 2. Stop whatever is still listening on the two ports.
+# 2. Stop app processes still listening on the two ports. Only python/uvicorn
+#    (backend) and node (frontend) are killed - an unrelated tool that happens
+#    to occupy one of these ports is reported, not terminated.
 foreach ($port in 8100, 5180) {
     $conns = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
-    foreach ($c in $conns) { Stop-Process -Id $c.OwningProcess -Force -ErrorAction SilentlyContinue }
+    foreach ($c in $conns) {
+        $proc = Get-Process -Id $c.OwningProcess -ErrorAction SilentlyContinue
+        if ($proc -and $proc.Name -match '^(python|pythonw|uvicorn|node)$') {
+            Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+        } elseif ($proc) {
+            Write-Host "port $port : occupied by unrelated process '$($proc.Name)' (PID $($proc.Id)) - not killed" -ForegroundColor Yellow
+        }
+    }
 }
 Start-Sleep 1
 

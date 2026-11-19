@@ -11,10 +11,10 @@ import ErrorMessage from '../../components/common/ErrorMessage';
 import DifficultyBadge from '../../components/problems/DifficultyBadge';
 import TrendChart from '../../components/profile/TrendChart';
 
+import { parseUtc } from '../../utils/datetime';
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-// Backend timestamps are naive UTC (no "Z"); parse them as UTC.
-const parseUtc = (s) => (s ? new Date(/[zZ]|[+-]\d\d:\d\d$/.test(s) ? s : `${s}Z`) : null);
 const fmtDate = (s) => (s ? parseUtc(s).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : '—');
 const fmtDateTime = (s) => (s ? parseUtc(s).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—');
 const fmtSecs = (v) => (v != null ? `${Number(v).toFixed(3)}s` : '—');
