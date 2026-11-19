@@ -68,8 +68,18 @@ if (Test-Docker) {
 }
 
 # ─── 2. Ollama (AI Generator & AI Tutor) ──────────────────────────────────────
+# Skipped when backend/.env selects a hosted AI provider (groq/gemini/...).
+$aiProvider = 'ollama'
+$envFile = Join-Path $backend '.env'
+if (Test-Path $envFile) {
+    $line = Select-String -Path $envFile -Pattern '^\s*AI_PROVIDER_TYPE\s*=' | Select-Object -Last 1
+    if ($line) { $aiProvider = ($line.Line -split '=', 2)[1].Trim().Trim('"').ToLower() }
+}
+
 Step 'Ollama'
-if (Test-Url 'http://127.0.0.1:11434/api/tags') {
+if ($aiProvider -ne 'ollama' -and $aiProvider -ne 'mock' -and $aiProvider -ne '') {
+    Ok "skipped - hosted AI provider '$aiProvider' is configured in backend\.env"
+} elseif (Test-Url 'http://127.0.0.1:11434/api/tags') {
     Ok 'already running'
 } else {
     $ollamaApp = "$env:LOCALAPPDATA\Programs\Ollama\ollama app.exe"

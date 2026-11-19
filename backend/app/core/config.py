@@ -29,12 +29,23 @@ class Settings(BaseSettings):
     # Database URL. Defaults to local SQLite if PostgreSQL is not provided or unavailable
     DATABASE_URL: str = "sqlite:///./ai_code_classroom.db"
 
-    # Ollama AI Configuration
+    # AI provider selection: "ollama" (local), "groq" or "gemini" (hosted,
+    # permanent free tiers, OpenAI-compatible), "openai_compat" (any other
+    # OpenAI-compatible host), or "mock" (tests/offline).
+    AI_PROVIDER_TYPE: str = "ollama"
+
+    # Ollama AI Configuration (AI_PROVIDER_TYPE=ollama)
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "qwen2.5-coder:7b"
     OLLAMA_TIMEOUT: int = 120
     AI_MAX_RETRIES: int = 3
-    AI_PROVIDER_TYPE: str = "ollama"
+
+    # Hosted AI configuration (AI_PROVIDER_TYPE=groq/gemini/openai_compat).
+    # groq and gemini have built-in defaults for URL and model; set these only
+    # to override them, or always for openai_compat.
+    AI_API_KEY: str = ""
+    AI_API_BASE_URL: str = ""
+    AI_API_MODEL: str = ""
 
     # Debug: keep finished code-runner containers (visible in Docker Desktop as "Exited")
     # instead of auto-removing them. Clean up with: docker container prune --filter label=app=code-runner

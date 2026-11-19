@@ -27,7 +27,7 @@ All code execution runs sandboxed in Docker — nothing submitted by a student e
 
 **Frontend:** React 19, Vite 6, React Router 7, Tailwind CSS 4, Monaco Editor, Axios, lucide-react.
 
-**AI / Execution:** Ollama (local LLM, default `qwen2.5-coder:7b`) for problem generation and tutoring; Docker for isolated code execution and reference-solution verification.
+**AI / Execution:** Ollama (local LLM, default `qwen2.5-coder:7b`) or a hosted free-tier API (Groq / Gemini / any OpenAI-compatible host — set `AI_PROVIDER_TYPE` and `AI_API_KEY` in `backend/.env`) for problem generation and tutoring; Docker for isolated code execution and reference-solution verification.
 
 ---
 

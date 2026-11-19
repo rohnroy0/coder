@@ -22,8 +22,9 @@ class AIService:
     """
 
     def __init__(self, provider: Optional[AIProvider] = None):
-        if provider is None and settings.AI_PROVIDER_TYPE == "mock":
-            provider = MockAIProvider()
+        # Provider selection (ollama / groq / gemini / openai_compat / mock)
+        # lives in ai_provider.build_default_provider; both services fall back
+        # to it when no explicit provider is injected.
         self.generator = QuestionGenerator(provider=provider)
         self.tutor = TutorService(provider=provider)
 

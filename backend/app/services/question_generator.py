@@ -13,7 +13,7 @@ from app.schemas.ai import (
     AIGeneratedQuestionPreview,
     AIGenerateResponse
 )
-from app.services.ai_provider import AIProvider, MockAIProvider
+from app.services.ai_provider import AIProvider, MockAIProvider, build_default_provider
 from app.services.ollama_provider import OllamaProvider, AIServiceUnavailableException
 from app.services.question_validator import QuestionValidator
 
@@ -81,12 +81,7 @@ class QuestionGenerator:
     """
 
     def __init__(self, provider: Optional[AIProvider] = None):
-        if provider:
-            self.provider = provider
-        elif settings.AI_PROVIDER_TYPE == "mock":
-            self.provider = MockAIProvider()
-        else:
-            self.provider = OllamaProvider()
+        self.provider = provider or build_default_provider()
 
     def _extract_json_str(self, raw_text: str) -> str:
         """Helper to extract JSON object from raw response string."""

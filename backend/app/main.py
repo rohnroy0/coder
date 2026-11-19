@@ -53,6 +53,12 @@ async def lifespan(app: FastAPI):
             "TEACHER_SIGNUP_CODE is not set: anyone can self-register a TEACHER "
             "account. Set it in backend/.env for any non-local deployment."
         )
+    if settings.AI_PROVIDER_TYPE.lower() in ("groq", "gemini", "openai_compat") and not settings.AI_API_KEY:
+        logger.warning(
+            "AI_PROVIDER_TYPE=%s is selected but AI_API_KEY is empty - every AI "
+            "feature will return 'unavailable' until a key is set in backend/.env.",
+            settings.AI_PROVIDER_TYPE,
+        )
 
     # Auto-create tables on startup (works with PostgreSQL & SQLite)
     Base.metadata.create_all(bind=engine)

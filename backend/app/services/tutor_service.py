@@ -8,7 +8,7 @@ from app.models.problem import Problem
 from app.models.submission import Submission, SubmissionStatus
 from app.models.feedback import AIFeedback, ErrorCategory
 from app.schemas.feedback import AIFeedbackContent, AIFeedbackResponse, AIFeedbackRequest
-from app.services.ai_provider import AIProvider, MockAIProvider
+from app.services.ai_provider import AIProvider, MockAIProvider, build_default_provider
 from app.services.ollama_provider import OllamaProvider, AIServiceUnavailableException
 from app.services.tutor_validator import TutorValidator
 
@@ -47,12 +47,7 @@ class TutorService:
     """
 
     def __init__(self, provider: Optional[AIProvider] = None):
-        if provider:
-            self.provider = provider
-        elif settings.AI_PROVIDER_TYPE == "mock":
-            self.provider = MockAIProvider()
-        else:
-            self.provider = OllamaProvider()
+        self.provider = provider or build_default_provider()
 
     def _generate_validated_feedback(
         self,

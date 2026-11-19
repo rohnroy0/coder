@@ -4,6 +4,28 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
+def build_default_provider() -> "AIProvider":
+    """
+    Single place that maps AI_PROVIDER_TYPE to a provider instance:
+      - "ollama" (default): local Ollama server
+      - "groq" / "gemini": hosted free-tier APIs (OpenAI-compatible)
+      - "openai_compat": any other OpenAI-compatible host via AI_API_BASE_URL
+      - "mock": deterministic responses for tests/offline dev
+    Imports are local to avoid circular imports (providers import AIProvider
+    from this module).
+    """
+    from app.core.config import settings
+
+    provider_type = settings.AI_PROVIDER_TYPE.lower()
+    if provider_type == "mock":
+        return MockAIProvider()
+    if provider_type in ("groq", "gemini", "openai_compat"):
+        from app.services.openai_compat_provider import OpenAICompatProvider
+        return OpenAICompatProvider(provider_type=provider_type)
+    from app.services.ollama_provider import OllamaProvider
+    return OllamaProvider()
+
 class AIProvider(ABC):
     """
     Abstract Base Class for AI Question Generation and Tutoring.
